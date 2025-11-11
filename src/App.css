@@ -1,38 +1,136 @@
-.App {
-  text-align: center;
+body {
+  margin: 0;
+  background: #FBF5ED;
+  font-family: system-ui, sans-serif;
+  color: #333;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.navbar {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 32px;
+  border-bottom: 1px solid #ddd;
+  background: #f8f5efcc;
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+}
+
+.logo {
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+.nav-links button {
+  margin-right: 12px;
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.search-box input {
+  border: none;
+  outline: none;
+  margin-left: 6px;
+  font-size: 0.9rem;
+}
+
+.profile {
+  width: 32px;
+  height: 32px;
+  background: #ccc;
+  border-radius: 50%;
+  display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  font-weight: 600;
+  margin-left: 12px;
 }
 
-.App-link {
-  color: #61dafb;
+.profile-header {
+  display: flex;
+  align-items: center;
+  padding: 24px 32px;
+  gap: 20px;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.avatar {
+  width: 80px;
+  height: 80px;
+  background: #ccc;
+  border-radius: 50%;
+}
+
+.edit-btn {
+  border: none;
+  background: none;
+  color: gray;
+  text-decoration: underline;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 32px 8px;
+  flex-wrap: wrap;
+}
+
+.tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  background: #f2f0ea;
+  border: none;
+  border-radius: 20px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.tag.active {
+  background: #e5e0d5;
+  color: #255f3e;
+  font-weight: 600;
+}
+
+.sort-controls button {
+  background: #f2f0ea;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  margin-left: 6px;
+}
+
+.gallery {
+  columns: 3 200px;
+  column-gap: 16px;
+  padding: 24px 32px;
+}
+
+.gallery img {
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  transition: opacity 0.2s ease;
+}
+
+.gallery img:hover {
+  opacity: 0.9;
 }
