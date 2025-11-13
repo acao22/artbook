@@ -37,6 +37,18 @@ function Artsbook() {
         </div>
       </nav>
 
+      <div className="style-preview">
+        <h2>Hello Styles</h2>
+        <p className="font-light">Hello Styles — Light</p>
+        <p className="font-medium">Hello Styles — Medium</p>
+        <p className="font-bold">Hello Styles — Bold</p>
+        <div className="color-palette">
+          <div className="color-swatch color1"></div>
+          <div className="color-swatch color2"></div>
+          <div className="color-swatch color3"></div>
+        </div>
+      </div>
+
       <section className="profile-header">
         <img src={pfp} alt="profile pic" className="avatar" />
         <div>
