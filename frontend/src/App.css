@@ -134,3 +134,51 @@ body {
 .gallery img:hover {
   opacity: 0.9;
 }
+
+.style-preview {
+  padding: 24px 32px;
+  text-align: left;
+  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.style-preview h2 {
+  margin-bottom: 12px;
+  font-weight: 600;
+  font-size: 1.4rem;
+}
+
+.color-palette {
+  display: flex;
+  gap: 12px;
+}
+
+.color-swatch {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+}
+
+.color1 {
+  background-color: #aec7e0;
+}
+
+.color2 {
+  background-color: #cac444;
+}
+
+.color3 {
+  background-color: #fbf5ed;
+  outline: 1px solid #000;
+}
+
+.font-light {
+  font-weight: 300;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-bold {
+  font-weight: 700;
+}
