@@ -1,10 +1,15 @@
 import React, { useState } from "react";
 import pfp from "../assets/pfp.png";
 import "../styles/ProfileHeader.css";
+import { NavLink } from "react-router-dom";
 
 function ProfileHeader() {
-  const [activeTab, setActiveTab] = useState("stack");
-  const tabs = ["Stack", "Stubs", "Collections", "Notes"];
+    const tabs = [
+    { label: "Stack", path: "stack" },
+    { label: "Stubs", path: "stubs" },
+    { label: "Collections", path: "collections" },
+    { label: "Notes", path: "notes" },
+  ];
 
   return (
     <section className="profile-header">
@@ -20,17 +25,17 @@ function ProfileHeader() {
 
       <div className="profile-tabs">
         {tabs.map((tab) => (
-          <button
-            key={tab}
-            className={
-              activeTab.toLowerCase() === tab.toLowerCase()
+          <NavLink
+            key={tab.path}
+            to={`/profile/${tab.path}`}
+            className={({ isActive }) =>
+              isActive
                 ? "profile-tab active"
                 : "profile-tab"
             }
-            onClick={() => setActiveTab(tab.toLowerCase())}
           >
-            {tab}
-          </button>
+            {tab.label}
+          </NavLink>
         ))}
       </div>
     </section>
