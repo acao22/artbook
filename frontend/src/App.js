@@ -1,19 +1,82 @@
 import React, { useState } from "react";
 import "./App.css";
-
+import {BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation} from "react-router-dom";
 import Navbar from "./components/Navbar";
 import ProfileHeader from "./components/ProfileHeader";
 import FilterBar from "./components/FilterBar";
 import Gallery from "./components/Gallery";
 import AddModal from "./components/AddModal";
-
 import sushi from "./assets/sushi.png";
+
+function StackPage({
+  filteredItems,
+  filters,
+  sortBy,
+  handleToggleTag,
+  handleToggleHearted,
+  handleToggleSort,
+  openModal,
+}) {
+  return (
+    <>
+      {/* FILTER BAR */}
+      <FilterBar
+        filters={filters}
+        sortBy={sortBy}
+        onToggleTag={handleToggleTag}
+        onToggleHearted={handleToggleHearted}
+        onToggleSort={handleToggleSort}
+        onAdd={openModal}
+        mode="stack"
+      />
+
+      {/* GALLERY */}
+      <Gallery items={filteredItems} />
+    </>
+  );
+}
+
+function StubsPage({
+  filteredItems,
+  filters,
+  sortBy,
+  handleToggleTag,
+  handleToggleHearted,
+  handleToggleSort,
+  openModal,
+}) {
+  return (
+    <>
+      {/* FILTER BAR */}
+      <FilterBar
+        filters={filters}
+        sortBy={sortBy}
+        onToggleTag={handleToggleTag}
+        onToggleHearted={handleToggleHearted}
+        onToggleSort={handleToggleSort}
+        onAdd={openModal}
+        mode="stubs"
+      />
+
+      {/* GALLERY */}
+      <Gallery items={filteredItems} />
+    </>
+  );
+}
+
+function EmptyPage({ label }) {
+  return (
+    <div style={{ padding: "40px", color: "#777" }}>
+      <h2>{label}</h2>
+    </div>
+  );
+}
 
 function Artsbook() {
   // ----------------------------
   //  DUMMY DATA
   // ----------------------------
-const [items, setItems] = useState([
+  const [items, setItems] = useState([
     { id: 1, title: "Nine Stories", img: sushi, type: "books", hearted: true },
     { id: 2, title: "One Battle After Another", img: sushi, type: "films", hearted: false },
     { id: 3, title: "The Concussion Diaries", img: sushi, type: "films", hearted: true },
@@ -35,6 +98,10 @@ const [items, setItems] = useState([
     tv: false,
     albums: false,
     hearted: false,
+
+    concerts: true,
+    museums: true,
+    theatre: true,
   });
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -90,48 +157,64 @@ const [items, setItems] = useState([
   //  RENDER
   // ----------------------------
   return (
-    <div className="app">
-      {/* NAVBAR */}
-      <Navbar searchQuery={searchQuery} onSearchChange={handleSearchChange} />
+    <Router>
+      <div className="app">
+        {/* NAVBAR */}
+        <Navbar searchQuery={searchQuery} onSearchChange={handleSearchChange} />
 
-      {/* STYLE PREVIEW (optional) */}
-      <div className="style-preview">
-        <h2>Hello Styles</h2>
-        <p className="font-light">Hello Styles — Light</p>
-        <p className="font-medium">Hello Styles — Medium</p>
-        <p className="font-bold">Hello Styles — Bold</p>
-        <div className="color-palette">
-          <div className="color-swatch color1"></div>
-          <div className="color-swatch color2"></div>
-          <div className="color-swatch color3"></div>
-        </div>
+        {/* PROFILE HEADER — SAME ON ALL PAGES */}
+        <ProfileHeader />
+
+        <Routes>
+          {/* redirect /profile → /profile/stack */}
+          <Route path="/profile" element={<Navigate to="/profile/stack" replace />} />
+
+          {/* STACK PAGE — keeps using filters, gallery, modal */}
+          <Route
+            path="/profile/stack"
+            element={
+              <StackPage
+                filteredItems={filteredItems}
+                filters={filters}
+                sortBy={sortBy}
+                handleToggleTag={handleToggleTag}
+                handleToggleHearted={handleToggleHearted}
+                handleToggleSort={handleToggleSort}
+                openModal={openModal}
+                mode = "stack"
+              />
+            }
+          />
+
+          {/* other pages just placeholders for now */}
+          <Route
+            path="/profile/stubs"
+              element={
+                <StubsPage
+                filteredItems={filteredItems}
+                filters={filters}
+                sortBy={sortBy}
+                handleToggleTag={handleToggleTag}
+                handleToggleHearted={handleToggleHearted}
+                handleToggleSort={handleToggleSort}
+                openModal={openModal}
+                mode = "stubs"
+              />
+            }
+          />
+          <Route path="/profile/collections" element={<EmptyPage label="Collections" />} />
+          <Route path="/profile/notes" element={<EmptyPage label="Notes" />} />
+
+          {/* fallback */}
+          <Route path="*" element={<Navigate to="/profile/stack" replace />} />
+        </Routes>
+
+        {/* MODAL always works */}
+        {showModal && (
+          <AddModal onClose={closeModal} onSave={handleAddItem} />
+        )}
       </div>
-
-      {/* PROFILE HEADER */}
-      <ProfileHeader />
-
-      {/* FILTER BAR */}
-      <FilterBar
-        filters={filters}
-        sortBy={sortBy}
-        onToggleTag={handleToggleTag}
-        onToggleHearted={handleToggleHearted}
-        onToggleSort={handleToggleSort}
-        onAdd={openModal}
-      />
-
-      {/* GALLERY */}
-      <Gallery items={filteredItems} />
-
-      {/* ADD MODAL */}
-      {showModal && (
-        <AddModal
-          onClose={closeModal}
-          onSave={handleAddItem}   // <-- NEW
-        />
-      )}
-
-    </div>
+    </Router>
   );
 }
 

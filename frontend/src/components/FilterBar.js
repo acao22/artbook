@@ -1,7 +1,7 @@
 import React from "react";
 import { Heart, Plus, ChevronDown } from "lucide-react";
 
-const TAGS = [
+const stackTags = [
   { key: "films", label: "Films" },
   { key: "books", label: "Books" },
   { key: "other", label: "Other" },
@@ -9,23 +9,32 @@ const TAGS = [
   { key: "albums", label: "Albums" },
 ];
 
+const stubsTags = [
+  { key: "concerts", label: "Concerts" },
+  { key: "museums", label: "Museums" },
+  { key: "theatre", label: "Theatre" },
+  { key: "other", label: "Other" }
+]
+
 function FilterBar({
   filters,
   sortBy,
   onToggleTag,
   onToggleHearted,
   onToggleSort,
-  onAdd    // <-- REQUIRED FIX
+  onAdd,    // <-- REQUIRED FIX
+  mode = "stack"
 }) {
   const sortLabel = sortBy === "default" ? "Sort" : "Title A–Z";
+  const visibleTags = mode === "stubs" ? stubsTags : stackTags;
 
   return (
     <div className="controls">
       <div className="tags">
-        {TAGS.map((t) => (
+        {visibleTags.map((t) => (
           <button
             key={t.key}
-            className={`tag ${filters[t.key] ? "active" : ""}`}
+            className={filters[t.key] ? "tag active" : "tag"}
             onClick={() => onToggleTag(t.key)}
           >
             {filters[t.key] ? "✓ " : ""}
@@ -34,7 +43,7 @@ function FilterBar({
         ))}
 
         <button
-          className={`tag ${filters.hearted ? "active" : ""}`}
+          className={filters.hearted ? "tag active" : "tag"}
           onClick={onToggleHearted}
         >
           <Heart size={12} style={{ marginRight: 4 }} />
