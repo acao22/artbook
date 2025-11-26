@@ -1,12 +1,38 @@
 import React, { useState } from "react";
 import "./App.css";
-import {BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation} from "react-router-dom";
+import {BrowserRouter as Router, Routes, Route, Navigate, useParams} from "react-router-dom";
 import Navbar from "./components/Navbar";
 import ProfileHeader from "./components/ProfileHeader";
 import FilterBar from "./components/FilterBar";
 import Gallery from "./components/Gallery";
 import AddModal from "./components/AddModal";
+import AddModalStubs from "./components/AddModalStubs"
 import sushi from "./assets/sushi.png";
+
+function ExplorePage() {
+  return <div style={{ padding: 40 }}><h2>Explore</h2></div>;
+}
+
+function CollectionsPage() {
+  return <div style={{ padding: 40 }}><h2>Collections</h2></div>;
+}
+
+function NotesPage() {
+  return <div style={{ padding: 40 }}><h2>Notes</h2></div>;
+}
+
+function ProfileLanding() {
+  return <Navigate to="/profile/stack" replace />;
+}
+
+function ProfileLayout({ children }) {
+  return (
+    <>
+      <ProfileHeader />
+      {children}
+    </>
+  );
+}
 
 function StackPage({
   filteredItems,
@@ -111,7 +137,11 @@ function Artsbook() {
   //  MODAL STATE
   // ----------------------------
   const [showModal, setShowModal] = useState(false);
-  const openModal = () => setShowModal(true);
+  const [currentMode, setCurrentMode] = useState("stack");
+  const openModal = (mode) => {
+    setCurrentMode(mode);
+    setShowModal(true);
+  }
   const closeModal = () => setShowModal(false);
 
   // ----------------------------
@@ -159,60 +189,75 @@ function Artsbook() {
   return (
     <Router>
       <div className="app">
+
         {/* NAVBAR */}
         <Navbar searchQuery={searchQuery} onSearchChange={handleSearchChange} />
-
-        {/* PROFILE HEADER — SAME ON ALL PAGES */}
-        <ProfileHeader />
-
+        
         <Routes>
-          {/* redirect /profile → /profile/stack */}
-          <Route path="/profile" element={<Navigate to="/profile/stack" replace />} />
 
-          {/* STACK PAGE — keeps using filters, gallery, modal */}
+          {/* Public pages (NO ProfileHeader) */}
+          <Route path="/explore" element={<ExplorePage />} />
+          <Route path="/collections" element={<CollectionsPage />} />
+          <Route path="/notes" element={<NotesPage />} />
+
+          {/* Profile pages (WITH ProfileHeader) */}
           <Route
-            path="/profile/stack"
+            path="/profile/*"
             element={
-              <StackPage
-                filteredItems={filteredItems}
-                filters={filters}
-                sortBy={sortBy}
-                handleToggleTag={handleToggleTag}
-                handleToggleHearted={handleToggleHearted}
-                handleToggleSort={handleToggleSort}
-                openModal={openModal}
-                mode = "stack"
-              />
+              <ProfileLayout>
+                <Routes>
+                  <Route path="" element={<Navigate to="stack" replace />} />
+                  <Route
+                    path="stack"
+                    element={
+                      <StackPage
+                        filteredItems={filteredItems}
+                        filters={filters}
+                        sortBy={sortBy}
+                        handleToggleTag={handleToggleTag}
+                        handleToggleHearted={handleToggleHearted}
+                        handleToggleSort={handleToggleSort}
+                        openModal={() => openModal("stack")}
+                      />
+                    }
+                  />
+                  <Route
+                    path="stubs"
+                    element={
+                      <StubsPage
+                        filteredItems={filteredItems}
+                        filters={filters}
+                        sortBy={sortBy}
+                        handleToggleTag={handleToggleTag}
+                        handleToggleHearted={handleToggleHearted}
+                        handleToggleSort={handleToggleSort}
+                        openModal={() => openModal("stubs")}
+                      />
+                    }
+                  />
+                  <Route path="collections" element={<EmptyPage label="Collections" />} />
+                  <Route path="notes" element={<EmptyPage label="Notes" />} />
+                </Routes>
+              </ProfileLayout>
             }
           />
-
-          {/* other pages just placeholders for now */}
-          <Route
-            path="/profile/stubs"
-              element={
-                <StubsPage
-                filteredItems={filteredItems}
-                filters={filters}
-                sortBy={sortBy}
-                handleToggleTag={handleToggleTag}
-                handleToggleHearted={handleToggleHearted}
-                handleToggleSort={handleToggleSort}
-                openModal={openModal}
-                mode = "stubs"
-              />
-            }
-          />
-          <Route path="/profile/collections" element={<EmptyPage label="Collections" />} />
-          <Route path="/profile/notes" element={<EmptyPage label="Notes" />} />
 
           {/* fallback */}
           <Route path="*" element={<Navigate to="/profile/stack" replace />} />
+
         </Routes>
 
-        {/* MODAL always works */}
+        {/* -------------------- */}
+        {/* ADD MODAL (STACK/STUBS) */}
+        {/* -------------------- */}
         {showModal && (
-          <AddModal onClose={closeModal} onSave={handleAddItem} />
+          currentMode === "stubs" ? (
+            <AddModalStubs onClose={closeModal} onSave={handleAddItem} />
+          ) : (
+            <AddModal onClose={closeModal} onSave={handleAddItem} />
+          )
         )}
+        
       </div>
     </Router>
   );

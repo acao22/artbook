@@ -268,7 +268,7 @@ body {
 
 .image-upload-box {
   width: 100%;
-  height: 150px;
+  height: 90px;
   background: #eee5d8;
   border-radius: 10px;
   margin-top: 6px;
@@ -354,4 +354,95 @@ body {
   font-size: 0.9rem;
   font-weight: 600;
   margin: 0;
+}
+
+/* modal search */
+.search-box {
+  position: relative; /* so results appear under input */
+  margin-bottom: 16px;
+}
+
+.search-results-vertical {
+  position: absolute;
+  top: 100%;       /* just below input */
+  left: 0;
+  right: 0;
+  max-height: 200px; /* limit height, scroll if needed */
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  z-index: 10;
+  padding: 2px 0;
+}
+
+.search-result-vertical {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.search-result-vertical:hover,
+.search-result-vertical.selected {
+  background: #0077ff;
+  color: white;
+}
+
+.search-result-vertical p {
+  margin: 0;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.search-result-vertical small {
+  display: block;
+  font-size: 12px;
+  color: #555;
+}
+
+.notes-list-container {
+  position: relative; /* so it stays inside modal */
+}
+
+.notes-list {
+  max-height: 200px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 2px 0;
+}
+
+/* Use same item styles as search results */
+.notes-list .search-result-vertical {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.notes-list .search-result-vertical:hover,
+.notes-list .search-result-vertical.selected {
+  background: #0077ff;
+  color: white;
+}
+
+.modal-top-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.stack-category {
+  flex: 2; /* more space for dropdown */
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stack-image {
+  flex: 1; /* less space for image */
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
