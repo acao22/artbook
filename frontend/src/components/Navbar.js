@@ -1,15 +1,36 @@
 import React from "react";
+import { NavLink } from "react-router-dom";
 import { Search } from "lucide-react";
+import "../styles/Navbar.css";
+
 
 function Navbar({ searchQuery, onSearchChange }) {
   return (
     <nav className="navbar">
       <div className="nav-left">
         <h1 className="logo">Artsbook</h1>
+
         <div className="nav-links">
-          <button>Explore</button>
-          <button>Collections</button>
-          <button>Notes</button>
+          <NavLink
+            to="/explore"
+            className="nav-btn"
+          >
+            Explore
+          </NavLink>
+
+          <NavLink
+            to="/collections"
+            className="nav-btn"
+          >
+            Collections
+          </NavLink>
+
+          <NavLink
+            to="/notes"
+            className="nav-btn"
+          >
+            Notes
+          </NavLink>
         </div>
       </div>
 
@@ -23,7 +44,12 @@ function Navbar({ searchQuery, onSearchChange }) {
             onChange={(e) => onSearchChange(e.target.value)}
           />
         </div>
-        <div className="profile">M</div>
+
+        <div className="profile">
+          <NavLink to="/profile" className="profile-link">
+            M
+          </NavLink>
+        </div>
       </div>
     </nav>
   );
