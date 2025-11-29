@@ -9,7 +9,7 @@ app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000"])
 
 SPOTIFY_CLIENT_ID = "fa717cc062404cdd81374a4145725899"
-SPOTIFY_CLIENT_SECRET = "f114c598e68f42f09e3d4b2d4c5bae8d"
+SPOTIFY_CLIENT_SECRET = ""
 
 @app.route("/")
 def hello():
