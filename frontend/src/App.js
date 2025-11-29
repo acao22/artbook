@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "./App.css";
-import {BrowserRouter as Router, Routes, Route, Navigate, useParams} from "react-router-dom";
+import {BrowserRouter as Router, Routes, Route, Navigate} from "react-router-dom";
 import Navbar from "./components/Navbar";
 import ProfileHeader from "./components/ProfileHeader";
 import FilterBar from "./components/FilterBar";
@@ -8,6 +8,31 @@ import Gallery from "./components/Gallery";
 import AddModal from "./components/AddModal";
 import AddModalStubs from "./components/AddModalStubs"
 import sushi from "./assets/sushi.png";
+
+import { useStackItems } from "./useStackItems";
+
+const COLLECTION_FIXTURES = [
+  {
+    id: "col-1",
+    title: "Comfort Cinema",
+    cover: sushi,
+  },
+  {
+    id: "col-2",
+    title: "Cozy Autumn Reads",
+    cover: sushi,
+  },
+  {
+    id: "col-3",
+    title: "Gallery Hopping",
+    cover: sushi,
+  },
+  {
+    id: "col-4",
+    title: "Sunlit Soundtracks",
+    cover: sushi,
+  },
+];
 
 function ExplorePage() {
   return <div style={{ padding: 40 }}><h2>Explore</h2></div>;
@@ -90,6 +115,35 @@ function StubsPage({
   );
 }
 
+function ProfCollectionsPage({
+  collections,
+  filteredItems,
+  filters,
+  sortBy,
+  handleToggleTag,
+  handleToggleHearted,
+  handleToggleSort,
+  openModal, }) {
+  if (!collections.length) {
+    return <EmptyPage label="Collections" />;
+  }
+
+  return (
+    <section className="profile-collections">
+      <FilterBar
+        filters={filters}
+        sortBy={sortBy}
+        onToggleTag={handleToggleTag}
+        onToggleHearted={handleToggleHearted}
+        onToggleSort={handleToggleSort}
+        onAdd={openModal}
+        mode="collections"
+      />
+      <Gallery items={collections} variant="collections" />
+    </section>
+  );
+}
+
 function EmptyPage({ label }) {
   return (
     <div style={{ padding: "40px", color: "#777" }}>
@@ -98,11 +152,17 @@ function EmptyPage({ label }) {
   );
 }
 
+ const collections = COLLECTION_FIXTURES;
+
 function Artsbook() {
+  const userId = "user_001";
+  const { items, status, addItem } = useStackItems(userId);
+  console.log("[Artsbook] status:", status);
+  console.log("[Artsbook] items:", items);
   // ----------------------------
   //  DUMMY DATA
   // ----------------------------
-  const [items, setItems] = useState([
+  /*const [items, setItems] = useState([
     { id: 1, title: "Nine Stories", img: sushi, type: "books", hearted: true },
     { id: 2, title: "One Battle After Another", img: sushi, type: "films", hearted: false },
     { id: 3, title: "The Concussion Diaries", img: sushi, type: "films", hearted: true },
@@ -112,7 +172,7 @@ function Artsbook() {
     { id: 7, title: "Apocalypse Now", img: sushi, type: "films", hearted: false },
     { id: 8, title: "The Player", img: sushi, type: "films", hearted: false },
     { id: 9, title: "Conversations With Friends", img: sushi, type: "books", hearted: true },
-  ]);
+  ]);*/
 
   // ----------------------------
   //  FILTER STATE
@@ -163,8 +223,13 @@ function Artsbook() {
     setSearchQuery(value);
   };
 
-  const handleAddItem = (newItem) => {
+  /*const handleAddItem = (newItem) => {
     setItems((prev) => [...prev, newItem]);
+  };*/
+
+  const handleAddItem = async (payload) => {
+    await addItem(payload);
+    // optional: close modal optimistically, errors surface via toast
   };
 
   // ----------------------------
@@ -235,7 +300,20 @@ function Artsbook() {
                       />
                     }
                   />
-                  <Route path="collections" element={<EmptyPage label="Collections" />} />
+                  <Route
+                    path="collections"
+                    element={
+                      <ProfCollectionsPage
+                        collections={collections}
+                        filteredItems={filteredItems}
+                        filters={filters}
+                        sortBy={sortBy}
+                        handleToggleTag={handleToggleTag}
+                        handleToggleHearted={handleToggleHearted}
+                        handleToggleSort={handleToggleSort}
+                        openModal={() => openModal("stubs")} />
+                    }
+                  />
                   <Route path="notes" element={<EmptyPage label="Notes" />} />
                 </Routes>
               </ProfileLayout>

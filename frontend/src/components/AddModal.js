@@ -108,6 +108,7 @@ function AddModal({ onClose, onSave }) {
       title,
       creator: selectedItem?.author || "",
       year: selectedItem?.first_publish_year || null,
+      thumbnail: selectedItem?.thumbnail || "",
     };
 
     try {

@@ -1,5 +1,5 @@
 node_modules
-serviceKey.json
+servicekey.json
 .vscode/
 venv/
 env/

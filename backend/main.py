@@ -156,6 +156,7 @@ def add_stack():
     creator = data.get("creator", "")
     external_id = data.get("externalId") or ""
     year = data.get("year")
+    coverUrl = data.get("thumbnail")
 
     if not user_id or not media_type or not title:
         return jsonify({"error": "Missing required fields"}), 400
@@ -170,6 +171,7 @@ def add_stack():
         "title": title,
         "creator": creator,
         "year": year, 
+        "coverUrl": coverUrl,
         "createdAt": int(time.time())
     })
 

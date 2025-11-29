@@ -13,8 +13,8 @@ const stubsTags = [
   { key: "concerts", label: "Concerts" },
   { key: "museums", label: "Museums" },
   { key: "theatre", label: "Theatre" },
-  { key: "other", label: "Other" }
-]
+  { key: "other", label: "Other" },
+];
 
 function FilterBar({
   filters,
@@ -22,11 +22,17 @@ function FilterBar({
   onToggleTag,
   onToggleHearted,
   onToggleSort,
-  onAdd,    // <-- REQUIRED FIX
-  mode = "stack"
+  onAdd,          // <-- keep Add button
+  mode = "stack", // stack, stubs, collections
 }) {
   const sortLabel = sortBy === "default" ? "Sort" : "Title A–Z";
-  const visibleTags = mode === "stubs" ? stubsTags : stackTags;
+
+  // Determine which tags to show
+  let visibleTags = [];
+  if (mode === "stack") visibleTags = stackTags;
+  else if (mode === "stubs") visibleTags = stubsTags;
+  // collections shows NO category tags, only hearted
+  // so visibleTags stays empty for collections
 
   return (
     <div className="controls">
@@ -42,13 +48,16 @@ function FilterBar({
           </button>
         ))}
 
-        <button
-          className={filters.hearted ? "tag active" : "tag"}
-          onClick={onToggleHearted}
-        >
-          <Heart size={12} style={{ marginRight: 4 }} />
-          Hearted Only
-        </button>
+        {/* Hearted filter always shown if present */}
+        {filters.hearted !== undefined && (
+          <button
+            className={filters.hearted ? "tag active" : "tag"}
+            onClick={onToggleHearted}
+          >
+            <Heart size={12} style={{ marginRight: 4 }} />
+            Hearted Only
+          </button>
+        )}
       </div>
 
       <div className="sort-controls">
@@ -56,7 +65,7 @@ function FilterBar({
           <ChevronDown size={12} /> {sortLabel}
         </button>
 
-        {/* PLUS BUTTON OPENS MODAL */}
+        {/* PLUS BUTTON ALWAYS VISIBLE */}
         <button onClick={onAdd}>
           <Plus size={14} />
         </button>
