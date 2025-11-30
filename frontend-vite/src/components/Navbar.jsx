@@ -51,9 +51,7 @@ export default function Navbar({ searchQuery, onSearchChange }) {
   );
 }
 
-/* ----------------------------
-   Animated Nav Item Component
------------------------------*/
+/* nav item component */
 function NavItem({ to, label }) {
   return (
     <NavLink to={to}>

@@ -2,40 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
+/* NOTE: THESE R ALL DEFINED FROM FIGMA */
+
 @layer base {
   :root {
-    /* 🎨 Backgrounds */
+    /* Backgrounds */
     --background: 36 71% 96%;        /* #FBF5ED */
     --foreground: 24 9% 20%;
 
     --card: 210 40% 88% / 0.4;        /* AEC7E0 @ 40% */
     --card-foreground: 24 9% 20%;
 
-    /* 🎨 Popover */
+    /* Popover */
     --popover: 36 71% 96%;
     --popover-foreground: 24 9% 20%;
 
-    /* 🎨 Primary Accent (Green) */
+    /* Primary Accent (Green) */
     --primary: 56 60% 53%;           /* #CAC444 */
     --primary-foreground: 24 9% 10%;
 
-    /* 🎨 Secondary (lightened background) */
+    /* Secondary (lightened background) */
     --secondary: 36 71% 92%;
     --secondary-foreground: 24 9% 20%;
 
-    /* 🎨 Muted */
+    /* Muted */
     --muted: 36 71% 92%;
     --muted-foreground: 24 9% 40%;
 
-    /* 🎨 Accent Blue */
+    /* Accent Blue */
     --accent: 210 40% 88% / 0.4;      /* AEC7E0 at 40% */
     --accent-foreground: 24 9% 20%;
 
-    /* 🎨 Destructive */
+    /* Destructive */
     --destructive: 0 70% 55%;
     --destructive-foreground: 36 71% 96%;
 
-    /* 🎨 Borders & Inputs */
+    /* Borders & Inputs */
     --border: 36 20% 85%;
     --input: 36 20% 85%;
     --ring: var(--primary);

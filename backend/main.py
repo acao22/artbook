@@ -6,7 +6,8 @@ import time
 import base64
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:3000"])
+# CORS(app, origins=["http://localhost:3000"])
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 SPOTIFY_CLIENT_ID = "fa717cc062404cdd81374a4145725899"
 SPOTIFY_CLIENT_SECRET = ""
@@ -156,6 +157,7 @@ def add_stack():
     creator = data.get("creator", "")
     external_id = data.get("externalId") or ""
     year = data.get("year")
+    cover_url = data.get("coverUrl") or ""
 
     if not user_id or not media_type or not title:
         return jsonify({"error": "Missing required fields"}), 400
@@ -169,7 +171,9 @@ def add_stack():
         "externalId": external_id or "",
         "title": title,
         "creator": creator,
-        "year": year, 
+        "year": year,
+        "coverUrl": cover_url,      
+        "hearted": False,            # optional default
         "createdAt": int(time.time())
     })
 
@@ -177,6 +181,46 @@ def add_stack():
     database_ref.child(f"users/{user_id}/stacks").child(stack_id).set(True)
 
     return jsonify({"message": "Stack item added", "id": stack_id}), 201
+
+
+# ------------------------------------
+# PATCH: Toggle heart on a stack item
+# ------------------------------------
+@app.route("/api/stacks/<stack_id>/heart", methods=["PATCH"])
+def update_heart(stack_id):
+    data = request.get_json()
+    new_val = data.get("hearted")
+
+    if new_val is None:
+        return jsonify({"error": "Missing 'hearted' field"}), 400
+
+    # Update in Firebase
+    stack_ref = database_ref.child("stacks").child(stack_id)
+    if not stack_ref.get():
+        return jsonify({"error": "Stack not found"}), 404
+
+    stack_ref.update({"hearted": new_val})
+
+    return jsonify({"message": "Heart updated", "hearted": new_val})
+
+
+# get for stacks
+@app.route("/api/stacks", methods=["GET"])
+def get_stacks():
+    user_id = request.args.get("userId")
+
+    stacks = database_ref.child("stacks").get() or {}
+    results = []
+
+    for stack_id, stack in stacks.items():
+        if user_id and stack.get("userId") != user_id:
+            continue
+
+        results.append({ "id": stack_id, **stack })
+
+    return jsonify({ "results": results })
+
+
 
 # ----------------------------
 # ADD STUB ITEM
@@ -210,3 +254,6 @@ def add_stub():
     database_ref.child(f"users/{user_id}/stubs").child(stub_id).set(True)
 
     return jsonify({"message": "Stub added", "id": stub_id}), 201
+
+if __name__ == "__main__":
+    app.run(debug=True)
