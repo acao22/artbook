@@ -8,6 +8,7 @@ export default function Gallery({
   items: providedItems,
   variant = "masonry",
   allowHeartToggle = true,
+  onCollectionClick,
 }) {
   const [fetchedItems, setFetchedItems] = useState([]);
 
@@ -83,9 +84,11 @@ export default function Gallery({
     return (
       <div className="grid gap-6 px-8 mt-8 sm:grid-cols-2 lg:grid-cols-3">
         {displayItems.map((collection) => (
-          <div
+          <button
             key={collection.id || collection.title}
-            className="rounded-3xl bg-white shadow-md overflow-hidden border border-[#f1e9de]"
+            type="button"
+            onClick={() => onCollectionClick?.(collection)}
+            className="rounded-3xl bg-white shadow-md overflow-hidden border border-[#f1e9de] text-left transition hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#CAC444]/60"
           >
             <div className="aspect-[4/3] bg-[#f4efe4]">
               <img
@@ -102,7 +105,7 @@ export default function Gallery({
                 <p className="text-sm text-gray-500">{collection.subtitle}</p>
               )}
             </div>
-          </div>
+          </button>
         ))}
       </div>
     );

@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
   Outlet,
+  useNavigate,
 } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
@@ -14,12 +15,14 @@ import Gallery from "./components/Gallery";
 import AddModal from "./components/AddModal";
 import AddModalStubs from "./components/AddModalStubs";
 import AddNoteModal from "./components/AddNoteModal";
+import AddModalCollections from "./components/AddModalCollections";
 
 // pages
 import ExplorePage from "./pages/ExplorePage";
 import CollectionsPage from "./pages/CollectionsPage";
 import NotesPage from "./pages/NotesPage";
 import EmptyPage from "./pages/EmptyPage";
+import CollectionDetail from "./pages/CollectionDetail";
 
 import sushi from "./assets/sushi.png";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -29,21 +32,29 @@ const COLLECTION_FIXTURES = [
     id: "col-1",
     title: "Comfort Cinema",
     cover: sushi,
+    items: [],
+    itemIds: [],
   },
   {
     id: "col-2",
     title: "Cozy Autumn Reads",
     cover: sushi,
+    items: [],
+    itemIds: [],
   },
   {
     id: "col-3",
     title: "Gallery Hopping",
     cover: sushi,
+    items: [],
+    itemIds: [],
   },
   {
     id: "col-4",
     title: "Sunlit Soundtracks",
     cover: sushi,
+    items: [],
+    itemIds: [],
   },
 ];
 
@@ -61,14 +72,36 @@ function ProfileLayout() {
   );
 }
 
-function ProfileCollectionsSection({ collections }) {
-  if (!collections.length) {
-    return <EmptyPage label="Collections" />;
-  }
+function ProfileCollectionsSection({ collections, onAddCollection }) {
+  const navigate = useNavigate();
+  const hasCollections = collections.length > 0;
 
   return (
-    <section className="px-8 mt-6 space-y-4">
-      <Gallery items={collections} variant="collections" />
+    <section className="px-8 mt-6 space-y-5">
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={onAddCollection}
+          className="rounded-full bg-[#CAC444] text-black px-4 py-2 text-sm font-semibold shadow-sm hover:bg-[#b5b03f] transition"
+        >
+          + New collection
+        </button>
+      </div>
+
+      {hasCollections ? (
+        <Gallery
+          items={collections}
+          variant="collections"
+          onCollectionClick={(collection) =>
+            navigate(`/profile/collections/${collection.id}`)
+          }
+        />
+      ) : (
+        <div className="rounded-3xl border border-dashed border-gray-300 bg-white/60 px-6 py-16 text-center text-sm text-gray-500">
+          No collections yet. Click "+ New collection" to start curating.
+        </div>
+      )}
     </section>
   );
 }
@@ -76,7 +109,11 @@ function ProfileCollectionsSection({ collections }) {
 export default function App() {
   const [stackItems, setStackItems] = useState([]);
   const [stubItems, setStubItems] = useState([]);
-  const [collections] = useState(COLLECTION_FIXTURES);
+  const [collections, setCollections] = useState(COLLECTION_FIXTURES);
+  const [collectionModalState, setCollectionModalState] = useState({
+    open: false,
+    collection: null,
+  });
 
   const [filters, setFilters] = useState(() =>
     ALL_FILTERS.reduce(
@@ -127,7 +164,10 @@ export default function App() {
       const data = await res.json();
       const normalized =
         (data.results || []).map((item) => ({
-          id: item.id,
+          id:
+            item.id?.toString() ||
+            item.externalId?.toString() ||
+            `stack-${Math.random().toString(36).slice(2)}`,
           title: item.title,
           coverUrl: item.coverUrl || item.img || "",
           img: item.coverUrl || item.img || "",
@@ -155,7 +195,9 @@ export default function App() {
       const data = await res.json();
       const normalized =
         (data.results || []).map((item) => ({
-          id: item.id,
+          id:
+            item.id?.toString() ||
+            `stub-${Math.random().toString(36).slice(2)}`,
           title: item.title,
           coverUrl: item.coverUrl || "",
           img: item.coverUrl || "",
@@ -208,7 +250,58 @@ export default function App() {
   );
 
   const normalizedQuery = searchQuery.toLowerCase();
+  const openCollectionModal = useCallback(
+    (collection = null) => {
+      setCollectionModalState({ open: true, collection });
+    },
+    []
+  );
 
+  const closeCollectionModal = useCallback(() => {
+    setCollectionModalState({ open: false, collection: null });
+  }, []);
+
+  const handleCollectionSave = useCallback(
+    (collectionPayload) => {
+      setCollections((prev) => {
+        const exists = prev.some((collection) => collection.id === collectionPayload.id);
+        if (exists) {
+          return prev.map((collection) =>
+            collection.id === collectionPayload.id ? collectionPayload : collection
+          );
+        }
+        return [...prev, collectionPayload];
+      });
+      closeCollectionModal();
+    },
+    [closeCollectionModal]
+  );
+
+  const handleCollectionDelete = useCallback((collectionId) => {
+    setCollections((prev) =>
+      prev.filter((collection) => collection.id?.toString() !== collectionId?.toString())
+    );
+  }, []);
+
+  const handleCollectionItemRemove = useCallback((collectionId, itemId) => {
+    const normalizedItemId = itemId?.toString();
+    setCollections((prev) =>
+      prev.map((collection) => {
+        if (collection.id !== collectionId) return collection;
+        const nextItems = (collection.items || []).filter(
+          (item) => item.id?.toString() !== normalizedItemId
+        );
+        const nextItemIds = (collection.itemIds || []).filter(
+          (id) => id?.toString() !== normalizedItemId
+        );
+        return {
+          ...collection,
+          items: nextItems,
+          itemIds: nextItemIds,
+        };
+      })
+    );
+  }, []);
   const filterAndSort = useCallback(
     (list, allowedTypes) => {
       let next = list.filter((item) => {
@@ -312,7 +405,23 @@ export default function App() {
 
             <Route
               path="collections"
-              element={<ProfileCollectionsSection collections={collections} />}
+              element={
+                <ProfileCollectionsSection
+                  collections={collections}
+                  onAddCollection={() => openCollectionModal()}
+                />
+              }
+            />
+            <Route
+              path="collections/:collectionId"
+              element={
+                <CollectionDetail
+                  collections={collections}
+                  onRemoveItem={handleCollectionItemRemove}
+                  onEditCollection={(collection) => openCollectionModal(collection)}
+                  onDeleteCollection={handleCollectionDelete}
+                />
+              }
             />
             <Route path="notes" element={<EmptyPage label="Notes" />} />
           </Route>
@@ -336,6 +445,16 @@ export default function App() {
               setNotes((prev) => [...prev, newNote]);
               setShowNoteModal(false);
             }}
+          />
+        )}
+
+        {collectionModalState.open && (
+          <AddModalCollections
+            onClose={closeCollectionModal}
+            onSave={handleCollectionSave}
+            stackItems={stackItems}
+            stubItems={stubItems}
+            initialCollection={collectionModalState.collection}
           />
         )}
 
