@@ -1,86 +1,114 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import AddNoteModal from "../components/AddNoteModal";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+const USER_ID = "user_001";
+const NOTE_BG = "#AEC7E0";
 
 export default function NotesPage() {
   const [notes, setNotes] = useState([]);
   const [showModal, setShowModal] = useState(false);
 
-  // load existing notes
-  useEffect(() => {
-  async function loadNotes() {
+  const refreshNotes = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:5000/api/notes?userId=user_001");
+      const res = await fetch(`http://127.0.0.1:5000/api/notes?userId=${USER_ID}`);
       const data = await res.json();
-
-      const formatted = data.results.map((note) => ({
-        id: note.id,
-        title: note.content.split(" — ")[0] || "",
-        subtitle: note.content.includes(" — ")
-          ? note.content.split(" — ")[1]
-          : "",
-        date: new Date(note.createdAt * 1000).toLocaleDateString(),
-        mediaId: note.stackId || null,
-      }));
-
+      const formatted =
+        (data.results || []).map((note) => ({
+          id: note.id,
+          content: note.content || "",
+          createdAt: note.createdAt ? new Date(note.createdAt * 1000) : new Date(),
+          stackId: note.stackId || null,
+          stubId: note.stubId || null,
+          mediaTitle: note.mediaTitle || "",
+          mediaType: note.mediaType || "",
+          coverUrl: note.coverUrl || note.thumbnail || "",
+        })) ?? [];
       setNotes(formatted);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load notes:", err);
     }
-  }
-
-  loadNotes();
-}, []);
-
-  // SAVE NOTE handler for AddNoteModal
-  const handleSaveNote = (newNote) => {
-    const updated = [...notes, newNote];
-    setNotes(updated);
-    localStorage.setItem("notes", JSON.stringify(updated));
   };
 
-  return (
-    <div className="p-10">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-semibold">Your Notes</h1>
+  useEffect(() => {
+    refreshNotes();
+  }, []);
 
+  const noteCards = useMemo(
+    () =>
+      notes.map((note) => {
+        const [title, ...rest] = note.content.split("\n");
+        const body = rest.join("\n").trim();
+        return {
+          ...note,
+          title: title || "Untitled note",
+          body,
+        };
+      }),
+    [notes]
+  );
+
+  return (
+    <div className="px-8 py-10 space-y-6">
+      <div className="flex items-center justify-between">
         <Button
           onClick={() => setShowModal(true)}
-          className="rounded-full bg-[#CAC444] text-black w-10 h-10 flex items-center justify-center"
+          className="rounded-full bg-[#CAC444] text-black shadow-md w-10 h-10 flex items-center justify-center"
         >
-          <Plus size={22} />
+          <Plus size={18} />
         </Button>
       </div>
 
-      {/* three col grid */}
-      <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
-        {notes.map((note) => (
-          <div
+      <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+        {noteCards.map((note) => (
+          <article
             key={note.id}
-            className="break-inside-avoid p-4 rounded-xl bg-[#AEC7E0]/40 shadow-sm"
+            className="rounded-3xl shadow-sm flex items-center gap-4 p-4"
+            style={{ backgroundColor: NOTE_BG }}
           >
-            <h2 className="text-lg font-bold">{note.title}</h2>
-            {note.subtitle && (
-              <p className="text-sm italic opacity-80">{note.subtitle}</p>
-            )}
-            <p className="text-xs mt-3 opacity-70">{note.date}</p>
+            <div className="flex-1 space-y-2 text-[#1f2a37]">
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-wide text-[#1f2a37]/70">
+                  {note.mediaType || "note"}
+                </p>
+                <h2 className="text-lg font-semibold line-clamp-2">
+                  {note.title}
+                </h2>
+              </div>
+              {note.body && (
+                <p className="text-sm line-clamp-2 opacity-80">{note.body}</p>
+              )}
 
-            {note.mediaImg && (
-              <img
-                src={note.mediaImg}
-                className="w-full rounded-lg mt-3 shadow"
-              />
-            )}
-          </div>
+              <div className="pt-1 text-xs opacity-70">
+                {note.createdAt.toLocaleDateString()}
+              </div>
+            </div>
+
+            <div className="w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0 border border-white/40 bg-white/40">
+              {note.coverUrl ? (
+                <img
+                  src={note.coverUrl}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[10px] text-[#1f2a37]/60">
+                  No image
+                </div>
+              )}
+            </div>
+          </article>
         ))}
       </div>
 
-      {/* modal */}
       {showModal && (
         <AddNoteModal
           onClose={() => setShowModal(false)}
-          onSave={handleSaveNote}   // FICING BUG: THIS MUST BE PASSED
+          onSave={() => {
+            setShowModal(false);
+            refreshNotes();
+          }}
         />
       )}
     </div>

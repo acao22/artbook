@@ -15,14 +15,12 @@ import FilterBar from "./components/FilterBar";
 import Gallery from "./components/Gallery";
 import AddModal from "./components/AddModal";
 import AddModalStubs from "./components/AddModalStubs";
-import AddNoteModal from "./components/AddNoteModal";
 import AddModalCollections from "./components/AddModalCollections";
 
 // pages
 import ExplorePage from "./pages/ExplorePage";
 import CollectionsPage from "./pages/CollectionsPage";
 import NotesPage from "./pages/NotesPage";
-import EmptyPage from "./pages/EmptyPage";
 import CollectionDetail from "./pages/CollectionDetail";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -97,17 +95,6 @@ export default function App() {
   // MODAL
   // --------------------------------------
   const [showModal, setShowModal] = useState(false);
-  const [showNoteModal, setShowNoteModal] = useState(false);
-  const [notes, setNotes] = useState([
-    {
-      id: "1",
-      title: "Notes on The Myth of Sisyphus",
-      content: "Read for PHIL2200",
-      createdAt: Date.now(),
-      image: null,
-    },
-  ]);
-
   const [currentMode, setCurrentMode] = useState("stack");
 
   const openModal = (mode) => {
@@ -140,6 +127,7 @@ export default function App() {
           hearted: Boolean(item.hearted),
           creator: item.creator || "",
           year: item.year || null,
+          displayMode: "stack",
         })) ?? [];
 
       setStackItems(normalized);
@@ -169,6 +157,7 @@ export default function App() {
           type: (item.category || item.mediaType || "other").toLowerCase(),
           hearted: false,
           date: item.date,
+          displayMode: "stub",
         })) ?? [];
 
       setStubItems(normalized);
@@ -239,6 +228,7 @@ export default function App() {
           {
             ...newItem,
             coverUrl: newItem.coverUrl || newItem.img || "",
+            displayMode: "stack",
           },
         ]);
       }
@@ -255,6 +245,7 @@ export default function App() {
           {
             ...newItem,
             coverUrl: newItem.coverUrl || newItem.img || "",
+            displayMode: "stub",
           },
         ]);
       }
@@ -450,15 +441,7 @@ export default function App() {
           {/* Public pages */}
           <Route path="/explore" element={<ExplorePage />} />
           <Route path="/collections" element={<CollectionsPage />} />
-          <Route
-            path="/notes"
-            element={
-              <NotesPage
-                notes={notes}
-                onAddNote={() => setShowNoteModal(true)}
-              />
-            }
-          />
+          <Route path="/notes" element={<CollectionsPage />} />
 
 
           {/* PROFILE ROUTES */}
@@ -539,7 +522,7 @@ export default function App() {
                 />
               }
             />
-            <Route path="notes" element={<EmptyPage label="Notes" />} />
+            <Route path="notes" element={<NotesPage />} />
           </Route>
 
           {/* Fallback */}
@@ -553,16 +536,6 @@ export default function App() {
           ) : (
             <AddModal onClose={closeModal} onSave={handleStackSaved} />
           ))}
-
-        {showNoteModal && (
-          <AddNoteModal
-            onClose={() => setShowNoteModal(false)}
-            onSave={(newNote) => {
-              setNotes((prev) => [...prev, newNote]);
-              setShowNoteModal(false);
-            }}
-          />
-        )}
 
         {collectionModalState.open && (
           <AddModalCollections

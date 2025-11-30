@@ -155,9 +155,6 @@ export default function AddModalCollections({
             <h2 className="text-xl font-semibold text-gray-900">
               {isEditMode ? "Edit collection" : "Create collection"}
             </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Group items from your stack or stubs into a themed list.
-            </p>
           </div>
 
           <Button variant="ghost" size="icon" onClick={onClose}>

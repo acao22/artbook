@@ -71,14 +71,16 @@ export default function Gallery({
     }
   };
 
-  const displayItems = useMemo(
-    () =>
-      (providedItems ?? fetchedItems)?.map((item) => ({
-        ...item,
-        coverUrl: item.coverUrl || item.img || FALLBACK_IMG,
-      })) ?? [],
-    [providedItems, fetchedItems]
-  );
+  const displayItems = useMemo(() => {
+    const source = providedItems ?? fetchedItems ?? [];
+    return source.map((item) => ({
+      ...item,
+      coverUrl:
+        variant === "collections"
+          ? item.coverUrl || item.img || FALLBACK_IMG
+          : item.coverUrl || item.img || "",
+    }));
+  }, [providedItems, fetchedItems, variant]);
 
   if (variant === "collections") {
     return (
