@@ -18,23 +18,37 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 
+const LABELS = {
+  artwork: "Artwork",
+  music: "Music",
+  books: "Books",
+  movies: "Movies",
+  concerts: "Concerts",
+  museums: "Museums",
+  theatre: "Theatre",
+  other: "Other",
+};
+
 export default function FilterBar({
   activeFilters,
   onToggleFilter,
   sortBy,
   onSortChange,
   openModal,
+  visibleFilters,
 }) {
-  // undef case
-  const activeKeys = Object.keys(activeFilters).filter(
-    (key) => activeFilters[key] === true
-  );
+  const filtersToRender =
+    (visibleFilters && visibleFilters.length > 0 ? visibleFilters : Object.keys(activeFilters)) ??
+    [];
+
+  const activeKeys = filtersToRender.filter((key) => activeFilters[key] === true);
 
   const handleFilterChange = (values) => {
     if (!Array.isArray(values)) return;
-    const updated = {};
 
-    Object.keys(activeFilters).forEach((key) => {
+    const updated = { ...activeFilters };
+
+    filtersToRender.forEach((key) => {
       updated[key] = values.includes(key);
     });
 
@@ -51,41 +65,17 @@ export default function FilterBar({
         onValueChange={handleFilterChange}
         className="flex gap-3"
       >
-        <ToggleGroupItem
-          value="artwork"
-          className="px-4 py-1.5 rounded-full text-sm 
+        {filtersToRender.map((key) => (
+          <ToggleGroupItem
+            key={key}
+            value={key}
+            className="px-4 py-1.5 rounded-full text-sm 
           border border-[#d6d3cd]
           data-[state=on]:bg-[#CAC444] data-[state=on]:text-black"
-        >
-          Artwork
-        </ToggleGroupItem>
-
-        <ToggleGroupItem
-          value="music"
-          className="px-4 py-1.5 rounded-full text-sm
-          border border-[#d6d3cd]
-          data-[state=on]:bg-[#CAC444] data-[state=on]:text-black"
-        >
-          Music
-        </ToggleGroupItem>
-
-        <ToggleGroupItem
-          value="books"
-          className="px-4 py-1.5 rounded-full text-sm 
-          border border-[#d6d3cd]
-          data-[state=on]:bg-[#CAC444] data-[state=on]:text-black"
-        >
-          Books
-        </ToggleGroupItem>
-
-        <ToggleGroupItem
-          value="movies"
-          className="px-4 py-1.5 rounded-full text-sm 
-          border border-[#d6d3cd]
-          data-[state=on]:bg-[#CAC444] data-[state=on]:text-black"
-        >
-          Movies
-        </ToggleGroupItem>
+          >
+            {LABELS[key] || key}
+          </ToggleGroupItem>
+        ))}
       </ToggleGroup>
 
       {/* RIGHT SIDE: sort and add */}

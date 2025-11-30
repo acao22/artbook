@@ -1,11 +1,15 @@
 import React, { useState } from "react";
 import { Heart } from "lucide-react";
 
-export default function GalleryItem({ item, refresh }) {
+const FALLBACK_IMG =
+  "https://via.placeholder.com/400x400/DDD7C8/8B7E6A?text=No+Image";
+
+export default function GalleryItem({ item, refresh, allowHeart = true }) {
   const [hover, setHover] = useState(false);
   const [hearted, setHearted] = useState(item.hearted);
 
   const toggleHeart = async () => {
+    if (!allowHeart || !item?.id) return;
     const newVal = !hearted;
     setHearted(newVal);
 
@@ -30,7 +34,7 @@ export default function GalleryItem({ item, refresh }) {
     >
       {/* IMAGE */}
       <img
-        src={item.coverUrl}
+        src={item.coverUrl || item.img || FALLBACK_IMG}
         alt={item.title}
         className="
           w-full object-cover rounded-xl 
@@ -75,23 +79,25 @@ export default function GalleryItem({ item, refresh }) {
       </div>
 
       {/* HEART BUTTON */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleHeart();
-        }}
-        className="absolute top-2 right-2"
-      >
-        <Heart
-          size={26}
-          className={`
-            drop-shadow 
-            transition-all duration-300 
-            ${hearted ? "fill-[#CAC444] text-[#CAC444]" : "text-white"}
-            ${hover ? "scale-110" : "scale-100"}
-          `}
-        />
-      </button>
+      {allowHeart && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleHeart();
+          }}
+          className="absolute top-2 right-2"
+        >
+          <Heart
+            size={26}
+            className={`
+              drop-shadow 
+              transition-all duration-300 
+              ${hearted ? "fill-[#CAC444] text-[#CAC444]" : "text-white"}
+              ${hover ? "scale-110" : "scale-100"}
+            `}
+          />
+        </button>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { X, Heart, Image as ImageIcon, Search as SearchIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,26 +13,29 @@ import { ChevronDown } from "lucide-react";
 
 import { Separator } from "@/components/ui/separator";
 
-const CATEGORY_OPTIONS = ["Artwork", "Music", "Books", "Movies"];
-
-function normalizeResult(category, raw) {
+function normalizeResult(category, raw, idx) {
   const lower = category.toLowerCase();
+  const fallbackId =
+    raw.id ||
+    raw.externalId ||
+    raw.key ||
+    raw.cover_edition_key ||
+    `${lower}-${raw.title || raw.name || idx}`;
 
   if (lower === "music") {
-    // music shape for now but we can change.it
     return {
-      id: raw.id,
-      title: raw.title || raw.name,
+      id: fallbackId,
+      title: raw.title || raw.name || "Untitled album",
       creator: raw.artist || raw.artist_name || "",
-      year: raw.year || (raw.release_date ? parseInt(raw.release_date.slice(0, 4)) : null),
+      year: raw.releaseYear || (raw.release_date ? parseInt(raw.release_date.slice(0, 4)) : null),
       thumbnail: raw.thumbnail || raw.image || null,
     };
   }
 
   if (lower === "books") {
     return {
-      id: raw.id,
-      title: raw.title,
+      id: fallbackId,
+      title: raw.title || "Untitled book",
       creator: raw.author || raw.authors?.[0] || "",
       year:
         raw.first_publish_year ||
@@ -41,10 +44,9 @@ function normalizeResult(category, raw) {
     };
   }
 
-  // movies
   return {
-    id: raw.id,
-    title: raw.title || raw.name,
+    id: fallbackId,
+    title: raw.title || raw.name || "Untitled movie",
     creator: raw.director || "",
     year: raw.year || (raw.release_date ? parseInt(raw.release_date.slice(0, 4)) : null),
     thumbnail: raw.thumbnail || raw.poster || null,
@@ -60,8 +62,7 @@ async function searchExternal(category, query) {
   const lower = category.toLowerCase();
 
   if (lower === "music") {
-    // we need to impl w Spotify in backend later
-    url = `${base}/api/music?query=${encodeURIComponent(query)}`;
+    url = `${base}/api/albums?query=${encodeURIComponent(query)}`;
   } else if (lower === "books") {
     url = `${base}/api/books?query=${encodeURIComponent(query)}`;
   } else if (lower === "movies") {
@@ -78,7 +79,7 @@ async function searchExternal(category, query) {
   const data = await res.json();
   const rawResults = data.results || data.items || [];
 
-  return rawResults.map((item) => normalizeResult(category, item));
+  return rawResults.map((item, idx) => normalizeResult(category, item, idx));
 }
 
 function AddModal({ onClose, onSave }) {
@@ -91,13 +92,65 @@ function AddModal({ onClose, onSave }) {
   const [selectedItem, setSelectedItem] = useState(null);
 
   const [titleOverride, setTitleOverride] = useState("");
+  const [notesType, setNotesType] = useState("New");
   const [noteContent, setNoteContent] = useState("");
+  const [existingNotes, setExistingNotes] = useState([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [selectedNoteId, setSelectedNoteId] = useState(null);
 
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
 
   const isArtwork = category === "Artwork";
-  const isExternalCategory = !isArtwork; 
+  const isExternalCategory = !isArtwork;
+
+  useEffect(() => {
+    setSearchTerm("");
+    setResults([]);
+    setSelectedItem(null);
+    setTitleOverride("");
+  }, [category]);
+
+  useEffect(() => {
+    if (notesType !== "From Existing") {
+      setSelectedNoteId(null);
+      if (notesType !== "New") {
+        setNoteContent("");
+      }
+      return;
+    }
+
+    let isMounted = true;
+    const fetchNotes = async () => {
+      try {
+        setNotesLoading(true);
+        const res = await fetch(
+          "http://127.0.0.1:5000/api/notes?userId=user_001"
+        );
+        if (!res.ok) {
+          throw new Error(`Failed to load notes (${res.status})`);
+        }
+        const data = await res.json();
+        if (isMounted) {
+          setExistingNotes(data.results || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch notes:", err);
+        if (isMounted) {
+          setExistingNotes([]);
+        }
+      } finally {
+        if (isMounted) {
+          setNotesLoading(false);
+        }
+      }
+    };
+
+    fetchNotes();
+    return () => {
+      isMounted = false;
+    };
+  }, [notesType]);
 
   // HANDLERS
 
@@ -141,12 +194,9 @@ function AddModal({ onClose, onSave }) {
   };
 
   const handleSave = async () => {
-    const mediaType = category.toLowerCase();
-
-    const title =
-      titleOverride.trim() ||
-      selectedItem?.title ||
-      (isArtwork ? "Untitled artwork" : "").trim();
+    const mediaType = isArtwork ? "other" : category.toLowerCase();
+    const fallbackTitle = isArtwork ? "Untitled artwork" : "";
+    const title = titleOverride.trim() || selectedItem?.title || fallbackTitle;
 
     if (!title) {
       alert("Please enter or select a title first.");
@@ -155,19 +205,11 @@ function AddModal({ onClose, onSave }) {
 
     const payload = {
       userId: "user_001",
-      mediaType: category.toLowerCase(),
+      mediaType,
       externalId: selectedItem?.id || null,
       title,
-      creator:
-        selectedItem?.author ||
-        selectedItem?.artist ||
-        "",
-      year:
-        selectedItem?.first_publish_year ||
-        (selectedItem?.releaseYear ?? null),
-
-      // - for books/movies/music: use API thumbnail
-      // - for artwork/manual uploads: fall back to imagePreview (base64)
+      creator: selectedItem?.creator || "",
+      year: selectedItem?.year ?? null,
       coverUrl: selectedItem?.thumbnail || imagePreview || null,
     };
 
@@ -188,7 +230,7 @@ function AddModal({ onClose, onSave }) {
 
       const stackId = stackData.id;
 
-      if (noteContent.trim()) {
+      if (notesType === "New" && noteContent.trim()) {
         await fetch("http://127.0.0.1:5000/api/notes", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -201,10 +243,21 @@ function AddModal({ onClose, onSave }) {
         });
       }
 
+      if (notesType === "From Existing" && selectedNoteId) {
+        await fetch(`http://127.0.0.1:5000/api/notes/${selectedNoteId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            stackId,
+          }),
+        });
+      }
+
       const newItem = {
         id: stackId,
         title,
-        img: imagePreview || null,
+        img: selectedItem?.thumbnail || imagePreview || null,
+        coverUrl: selectedItem?.thumbnail || imagePreview || null,
         type: mediaType,
         hearted,
         year: payload.year,
@@ -417,16 +470,73 @@ function AddModal({ onClose, onSave }) {
         )}
 
         {/* notes */}
-        <div className="space-y-1.5">
-          <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">
-            Your notes
-          </p>
-          <textarea
-            className="w-full min-h-[90px] rounded-lg border border-[#ddd] bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#AEC7E0]/70 focus:border-transparent"
-            placeholder="What did this make you feel? Any favorite lines, scenes, or moments?"
-            value={noteContent}
-            onChange={(e) => setNoteContent(e.target.value)}
-          />
+        <div className="space-y-3">
+          <div>
+            <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+              Notes
+            </p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {["New", "From Existing", "None"].map((option) => {
+                const isActive = notesType === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setNotesType(option)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition border ${
+                      isActive
+                        ? "bg-[#CAC444] border-[#CAC444] text-black"
+                        : "bg-white border-[#ddd] text-gray-600 hover:border-gray-400"
+                    }`}
+                  >
+                    {option}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {notesType === "New" && (
+            <textarea
+              className="w-full min-h-[90px] rounded-lg border border-[#ddd] bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#AEC7E0]/70 focus:border-transparent"
+              placeholder="What did this make you feel? Any favorite lines, scenes, or moments?"
+              value={noteContent}
+              onChange={(e) => setNoteContent(e.target.value)}
+            />
+          )}
+
+          {notesType === "From Existing" && (
+            <div className="space-y-2">
+              <div className="rounded-lg border border-[#e0d6c8] bg-white max-h-40 overflow-y-auto">
+                {notesLoading ? (
+                  <div className="p-3 text-sm text-gray-500">Loading your notes...</div>
+                ) : existingNotes.length === 0 ? (
+                  <div className="p-3 text-sm text-gray-500">
+                    No notes found. Create one first from the Notes page.
+                  </div>
+                ) : (
+                  existingNotes.map((note) => (
+                    <button
+                      type="button"
+                      key={note.id}
+                      onClick={() => setSelectedNoteId(note.id)}
+                      className={`w-full text-left px-3 py-2 text-sm transition ${
+                        selectedNoteId === note.id
+                          ? "bg-[#e9e2cf] text-gray-900"
+                          : "hover:bg-[#f4efe4] text-gray-700"
+                      }`}
+                    >
+                      {note.content?.length > 0
+                        ? `${note.content.slice(0, 120)}${
+                            note.content.length > 120 ? "..." : ""
+                          }`
+                        : "Untitled note"}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* footer */}

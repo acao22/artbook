@@ -144,6 +144,26 @@ def get_notes():
 
     return jsonify({"results": filtered})
 
+@app.route("/api/notes/<note_id>", methods=["PATCH"])
+def update_note(note_id):
+    data = request.get_json() or {}
+    allowed_keys = {"stackId", "stubId", "content", "isPublic"}
+    updates = {key: data.get(key) for key in allowed_keys if key in data}
+
+    if not updates:
+        return jsonify({"error": "No valid fields provided"}), 400
+
+    note_ref = database_ref.child("notes").child(note_id)
+    existing = note_ref.get()
+
+    if not existing:
+        return jsonify({"error": "Note not found"}), 404
+
+    note_ref.update(updates)
+    latest = note_ref.get() or {}
+
+    return jsonify({"message": "Note updated", "note": {**latest, "id": note_id}})
+
 # ----------------------------
 # ADD STACK ITEM
 # ----------------------------
@@ -234,6 +254,7 @@ def add_stub():
     category = data.get("mediaType")
     title = data.get("title")
     date = data.get("date")  # YYYY-MM-DD
+    cover_url = data.get("coverUrl") or ""
 
     if not user_id or not category or not title:
         return jsonify({"error": "Missing required fields"}), 400
@@ -247,6 +268,7 @@ def add_stub():
         "category": category,
         "title": title,
         "date": date,
+        "coverUrl": cover_url,
         "createdAt": int(time.time())
     })
 
@@ -254,6 +276,21 @@ def add_stub():
     database_ref.child(f"users/{user_id}/stubs").child(stub_id).set(True)
 
     return jsonify({"message": "Stub added", "id": stub_id}), 201
+
+@app.route("/api/stubs", methods=["GET"])
+def get_stubs():
+    user_id = request.args.get("userId")
+
+    stubs = database_ref.child("stubs").get() or {}
+    results = []
+
+    for stub_id, stub in stubs.items():
+        if user_id and stub.get("userId") != user_id:
+            continue
+
+        results.append({"id": stub_id, **stub})
+
+    return jsonify({"results": results})
 
 if __name__ == "__main__":
     app.run(debug=True)

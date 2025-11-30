@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -6,17 +6,6 @@ import {
   Navigate,
   Outlet,
 } from "react-router-dom";
-
-import {
-  music1,
-  music2,
-  music3,
-  book1,
-  book2,
-  movie1,
-  movie2,
-  movie3,
-} from "./assets";
 
 import Navbar from "./components/Navbar";
 import ProfileHeader from "./components/ProfileHeader";
@@ -35,10 +24,34 @@ import EmptyPage from "./pages/EmptyPage";
 import sushi from "./assets/sushi.png";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
+const COLLECTION_FIXTURES = [
+  {
+    id: "col-1",
+    title: "Comfort Cinema",
+    cover: sushi,
+  },
+  {
+    id: "col-2",
+    title: "Cozy Autumn Reads",
+    cover: sushi,
+  },
+  {
+    id: "col-3",
+    title: "Gallery Hopping",
+    cover: sushi,
+  },
+  {
+    id: "col-4",
+    title: "Sunlit Soundtracks",
+    cover: sushi,
+  },
+];
 
-// -----------------------------
-// Profile Layout Component
-// -----------------------------
+const STACK_FILTERS = ["music", "books", "movies", "other"];
+const STUB_FILTERS = ["concerts", "museums", "theatre", "other"];
+const ALL_FILTERS = [...new Set([...STACK_FILTERS, ...STUB_FILTERS])];
+const USER_ID = "user_001";
+
 function ProfileLayout() {
   return (
     <>
@@ -48,115 +61,32 @@ function ProfileLayout() {
   );
 }
 
+function ProfileCollectionsSection({ collections }) {
+  if (!collections.length) {
+    return <EmptyPage label="Collections" />;
+  }
+
+  return (
+    <section className="px-8 mt-6 space-y-4">
+      <Gallery items={collections} variant="collections" />
+    </section>
+  );
+}
+
 export default function App() {
-  // --------------------------------------
-  // SAMPLE DATA
-  // --------------------------------------
-const [items, setItems] = useState([
-  // ----------------------
-  //     BOOKS (Tall)
-  // ----------------------
-  {
-    id: 1,
-    title: "Wonder",
-    img: book1,
-    type: "books",
-    hearted: true,
-  },
-  {
-    id: 2,
-    title: "Sunrise on the Reaping",
-    img: book2,
-    type: "books",
-    hearted: false,
-  },
+  const [stackItems, setStackItems] = useState([]);
+  const [stubItems, setStubItems] = useState([]);
+  const [collections] = useState(COLLECTION_FIXTURES);
 
-  // ----------------------
-  //     MOVIES (Medium-wide)
-  // ----------------------
-  {
-    id: 4,
-    title: "Past Lives",
-    img: movie1,
-    type: "movies",
-    hearted: true,
-  },
-  {
-    id: 5,
-    title: "Avatar",
-    img: movie2,
-    type: "movies",
-    hearted: false,
-  },
-  {
-    id: 6,
-    title: "Spirited Away",
-    img: movie3,
-    type: "movies",
-    hearted: true,
-  },
-
-  // ----------------------
-  //     MUSIC (square)
-  // ----------------------
-  {
-    id: 7,
-    title: "Not for Radio",
-    img: music1,
-    type: "music",
-    hearted: true,
-  },
-  {
-    id: 8,
-    title: "Touch",
-    img: music2,
-    type: "music",
-    hearted: false,
-  },
-  {
-    id: 9,
-    title: "Submarine",
-    img: music3,
-    type: "music",
-    hearted: true,
-  },
-
-  // ----------------------
-  //     ARTWORK (varied aspect ratios)
-  // ----------------------
-  {
-    id: 10,
-    title: "Starry Night – Van Gogh",
-    img: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg/640px-Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg",
-    type: "artwork",
-    hearted: true,
-  },
-  {
-    id: 11,
-    title: "Sushi",
-    img: "./assets/sushi.jpg",
-    type: "artwork",
-    hearted: false,
-  },
-  {
-    id: 12,
-    title: "Girl with a Pearl Earring – Vermeer",
-    img: "https://upload.wikimedia.org/wikipedia/commons/d/d7/Meisje_met_de_parel.jpg",
-    type: "artwork",
-    hearted: true,
-  },
-]);
-
-
-  // --------------------------------------
-  // FILTER STATE
-  // --------------------------------------
-  const [filters, setFilters] = useState({
-    artwork: true,
-    music: true,
-    books: true,
-    movies: true,
-  });
+  const [filters, setFilters] = useState(() =>
+    ALL_FILTERS.reduce(
+      (acc, key) => ({
+        ...acc,
+        [key]: true,
+      }),
+      {}
+    )
+  );
 
   const [sortBy, setSortBy] = useState("default");
   const [searchQuery, setSearchQuery] = useState("");
@@ -167,13 +97,12 @@ const [items, setItems] = useState([
   const [showModal, setShowModal] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [notes, setNotes] = useState([
-    // temporary sample notes:
     {
       id: "1",
       title: "Notes on The Myth of Sisyphus",
       content: "Read for PHIL2200",
       createdAt: Date.now(),
-      image: null, // optionally attach gallery image
+      image: null,
     },
   ]);
 
@@ -186,20 +115,135 @@ const [items, setItems] = useState([
 
   const closeModal = () => setShowModal(false);
 
-  // --------------------------------------
-  // FILTER LOGIC
-  // --------------------------------------
-  let filteredItems = items
-    .filter((item) => filters[item.type] === true)
-    .filter((item) =>
-      item.title.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+  const loadStacks = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:5000/api/stacks?userId=${USER_ID}`
+      );
+      if (!res.ok) {
+        console.error("Failed to fetch stacks:", res.status);
+        return;
+      }
+      const data = await res.json();
+      const normalized =
+        (data.results || []).map((item) => ({
+          id: item.id,
+          title: item.title,
+          coverUrl: item.coverUrl || item.img || "",
+          img: item.coverUrl || item.img || "",
+          type: (item.mediaType || item.type || "other").toLowerCase(),
+          hearted: Boolean(item.hearted),
+          creator: item.creator || "",
+          year: item.year || null,
+        })) ?? [];
 
-  if (sortBy === "title") {
-    filteredItems = [...filteredItems].sort((a, b) =>
-      a.title.localeCompare(b.title)
-    );
-  }
+      setStackItems(normalized);
+    } catch (err) {
+      console.error("Failed to fetch stacks:", err);
+    }
+  }, []);
+
+  const loadStubs = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:5000/api/stubs?userId=${USER_ID}`
+      );
+      if (!res.ok) {
+        console.error("Failed to fetch stubs:", res.status);
+        return;
+      }
+      const data = await res.json();
+      const normalized =
+        (data.results || []).map((item) => ({
+          id: item.id,
+          title: item.title,
+          coverUrl: item.coverUrl || "",
+          img: item.coverUrl || "",
+          type: (item.category || item.mediaType || "other").toLowerCase(),
+          hearted: false,
+          date: item.date,
+        })) ?? [];
+
+      setStubItems(normalized);
+    } catch (err) {
+      console.error("Failed to fetch stubs:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStacks();
+    loadStubs();
+  }, [loadStacks, loadStubs]);
+
+  const handleStackSaved = useCallback(
+    (newItem) => {
+      if (newItem) {
+        setStackItems((prev) => [
+          ...prev,
+          {
+            ...newItem,
+            coverUrl: newItem.coverUrl || newItem.img || "",
+          },
+        ]);
+      }
+      loadStacks();
+    },
+    [loadStacks]
+  );
+
+  const handleStubSaved = useCallback(
+    (newItem) => {
+      if (newItem) {
+        setStubItems((prev) => [
+          ...prev,
+          {
+            ...newItem,
+            coverUrl: newItem.coverUrl || newItem.img || "",
+          },
+        ]);
+      }
+      loadStubs();
+    },
+    [loadStubs]
+  );
+
+  const normalizedQuery = searchQuery.toLowerCase();
+
+  const filterAndSort = useCallback(
+    (list, allowedTypes) => {
+      let next = list.filter((item) => {
+        const typeKey = (item.type || item.mediaType || "other").toLowerCase();
+        if (!allowedTypes.includes(typeKey)) return false;
+        if (filters[typeKey] === false) return false;
+        return true;
+      });
+
+      if (normalizedQuery) {
+        next = next.filter((item) =>
+          (item.title || "").toLowerCase().includes(normalizedQuery)
+        );
+      }
+
+      if (sortBy === "title") {
+        next = [...next].sort((a, b) =>
+          (a.title || "").localeCompare(b.title || "")
+        );
+      }
+
+      return next;
+    },
+    [filters, normalizedQuery, sortBy]
+  );
+
+  const filteredStackItems = useMemo(
+    () => filterAndSort(stackItems, STACK_FILTERS),
+    [stackItems, filterAndSort]
+  );
+
+  const filteredStubItems = useMemo(
+    () => filterAndSort(stubItems, STUB_FILTERS),
+    [stubItems, filterAndSort]
+  );
 
   // --------------------------------------
   // RENDER
@@ -235,13 +279,13 @@ const [items, setItems] = useState([
                 <>
                   <FilterBar
                     activeFilters={filters}
-                    onToggleFilter={(updated) => setFilters(updated)}
-
+                    onToggleFilter={setFilters}
                     sortBy={sortBy}
                     onSortChange={setSortBy}
                     openModal={() => openModal("stack")}
+                    visibleFilters={STACK_FILTERS}
                   />
-                  <Gallery items={filteredItems} />
+                  <Gallery items={filteredStackItems} />
                 </>
               }
             />
@@ -252,18 +296,24 @@ const [items, setItems] = useState([
                 <>
                   <FilterBar
                     activeFilters={filters}
-                    onToggleFilter={(updated) => setFilters(updated)}
-
+                    onToggleFilter={setFilters}
                     sortBy={sortBy}
                     onSortChange={setSortBy}
                     openModal={() => openModal("stubs")}
+                    visibleFilters={STUB_FILTERS}
                   />
-                  <Gallery items={filteredItems} />
+                  <Gallery
+                    items={filteredStubItems}
+                    allowHeartToggle={false}
+                  />
                 </>
               }
             />
 
-            <Route path="collections" element={<EmptyPage label="Collections" />} />
+            <Route
+              path="collections"
+              element={<ProfileCollectionsSection collections={collections} />}
+            />
             <Route path="notes" element={<EmptyPage label="Notes" />} />
           </Route>
 
@@ -274,9 +324,9 @@ const [items, setItems] = useState([
         {/* MODALS */}
         {showModal &&
           (currentMode === "stubs" ? (
-            <AddModalStubs onClose={closeModal} onSave={(i) => setItems([...items, i])} />
+            <AddModalStubs onClose={closeModal} onSave={handleStubSaved} />
           ) : (
-            <AddModal onClose={closeModal} onSave={(i) => setItems([...items, i])} />
+            <AddModal onClose={closeModal} onSave={handleStackSaved} />
           ))}
 
         {showNoteModal && (
