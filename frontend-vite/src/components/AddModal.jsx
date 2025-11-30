@@ -44,6 +44,18 @@ function normalizeResult(category, raw, idx) {
     };
   }
 
+  if (lower === "tv") {
+    return {
+      id: fallbackId,
+      title: raw.title || raw.name || "Untitled series",
+      creator: raw.creator || raw.network || "",
+      year: raw.first_air_date
+        ? parseInt(raw.first_air_date.slice(0, 4))
+        : null,
+      thumbnail: raw.thumbnail || raw.poster || null,
+    };
+  }
+
   return {
     id: fallbackId,
     title: raw.title || raw.name || "Untitled movie",
@@ -67,6 +79,8 @@ async function searchExternal(category, query) {
     url = `${base}/api/books?query=${encodeURIComponent(query)}`;
   } else if (lower === "movies") {
     url = `${base}/api/movies?query=${encodeURIComponent(query)}`;
+  } else if (lower === "tv") {
+    url = `${base}/api/tv?query=${encodeURIComponent(query)}`;
   } else {
     return [];
   }
@@ -83,7 +97,7 @@ async function searchExternal(category, query) {
 }
 
 function AddModal({ onClose, onSave }) {
-  const [category, setCategory] = useState("Artwork");
+  const [category, setCategory] = useState("Music");
   const [hearted, setHearted] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -101,8 +115,8 @@ function AddModal({ onClose, onSave }) {
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
 
-  const isArtwork = category === "Artwork";
-  const isExternalCategory = !isArtwork;
+  const isManualCategory = category === "Other";
+  const isExternalCategory = !isManualCategory;
 
   useEffect(() => {
     setSearchTerm("");
@@ -194,8 +208,8 @@ function AddModal({ onClose, onSave }) {
   };
 
   const handleSave = async () => {
-    const mediaType = isArtwork ? "other" : category.toLowerCase();
-    const fallbackTitle = isArtwork ? "Untitled artwork" : "";
+    const mediaType = category.toLowerCase();
+    const fallbackTitle = isManualCategory ? "Untitled item" : "";
     const title = titleOverride.trim() || selectedItem?.title || fallbackTitle;
 
     if (!title) {
@@ -287,10 +301,9 @@ function AddModal({ onClose, onSave }) {
           <div>
             <h2 className="text-lg font-semibold text-gray-800">Add to stack</h2>
             <p className="text-xs text-gray-500 mt-1">
-              {isArtwork
-                ? "Upload artwork manually and jot down your thoughts."
-                : "Search and select a {category} from an external source, then add your own note."
-                  .replace("{category}", category.toLowerCase())}
+              {isManualCategory
+                ? "Upload an image or describe anything that doesn't fit the other categories."
+                : `Search and select a ${category.toLowerCase()} from an external source, then add your own note.`}
             </p>
           </div>
 
@@ -320,20 +333,24 @@ function AddModal({ onClose, onSave }) {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent className="w-40 bg-white">
-              <DropdownMenuItem onClick={() => setCategory("Artwork")}>
-                Artwork
-              </DropdownMenuItem>
-
               <DropdownMenuItem onClick={() => setCategory("Music")}>
                 Music
+              </DropdownMenuItem>
+
+              <DropdownMenuItem onClick={() => setCategory("Movies")}>
+                Movies
+              </DropdownMenuItem>
+
+              <DropdownMenuItem onClick={() => setCategory("TV")}>
+                TV
               </DropdownMenuItem>
 
               <DropdownMenuItem onClick={() => setCategory("Books")}>
                 Books
               </DropdownMenuItem>
 
-              <DropdownMenuItem onClick={() => setCategory("Movies")}>
-                Movies
+              <DropdownMenuItem onClick={() => setCategory("Other")}>
+                Other
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -462,7 +479,7 @@ function AddModal({ onClose, onSave }) {
             </p>
             <textarea
               className="w-full min-h-[80px] rounded-lg border border-[#ddd] bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CAC444]/60 focus:border-transparent"
-              placeholder="Describe your artwork or give it a title..."
+              placeholder="Give this entry a title or describe it..."
               value={titleOverride}
               onChange={(e) => setTitleOverride(e.target.value)}
             />

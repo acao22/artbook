@@ -160,26 +160,75 @@ def create_notes(stack_keys, stub_keys):
 # -------------------------------------------------------
 # COLLECTIONS
 # -------------------------------------------------------
+def build_collection_item(item_id, source_node):
+    if not item_id:
+        return None
+    data = database_ref.child(source_node).child(item_id).get() or {}
+    if not data:
+        return None
+    media_type = data.get("mediaType") or data.get("category") or "other"
+    return {
+        "id": item_id,
+        "title": data.get("title") or "Untitled item",
+        "coverUrl": data.get("coverUrl") or data.get("img") or "",
+        "type": media_type.lower(),
+    }
+
+
 def create_collections(stack_keys, stub_keys):
     collections_ref = database_ref.child("collections")
+    now = int(time.time())
+
+    first_items = list(
+        filter(
+            None,
+            [
+                build_collection_item(stack_keys.get("gatsby"), "stacks"),
+                build_collection_item(stack_keys.get("interstellar"), "stacks"),
+                build_collection_item(stub_keys.get("radiohead"), "stubs"),
+            ],
+        )
+    )
 
     col1_id = collections_ref.push().key
-    collections_ref.child(col1_id).set({
+    col1_payload = {
         "userId": "user_001",
         "title": "Alice’s 2025 Favorites",
-        "description": "A mix of my favorite movies and concerts.",
-        "items": {
-            stack_keys["gatsby"]: True,
-            stack_keys["interstellar"]: True,
-            stub_keys["radiohead"]: True
-        },
-        "published": True,
-        "createdAt": int(time.time())
-    })
-
+        "subtitle": "Mood board of movies + live music.",
+        "cover": first_items[0]["coverUrl"] if first_items else "",
+        "items": first_items,
+        "itemIds": [item["id"] for item in first_items],
+        "createdAt": now,
+        "updatedAt": now,
+    }
+    collections_ref.child(col1_id).set(col1_payload)
     database_ref.child("users/user_001/collections").child(col1_id).set(True)
-    database_ref.child("publicCollections").child(col1_id).child("user_001").set(True)
     add_activity("user_001", "collection", col1_id)
+
+    second_items = list(
+        filter(
+            None,
+            [
+                build_collection_item(stack_keys.get("interstellar"), "stacks"),
+                build_collection_item(stub_keys.get("moma"), "stubs"),
+            ],
+        )
+    )
+
+    col2_id = collections_ref.push().key
+    col2_payload = {
+        "userId": "user_002",
+        "title": "Bob’s Culture Hits",
+        "subtitle": "What inspired me this year.",
+        "cover": second_items[0]["coverUrl"] if second_items else "",
+        "items": second_items,
+        "itemIds": [item["id"] for item in second_items],
+        "createdAt": now,
+        "updatedAt": now,
+    }
+    collections_ref.child(col2_id).set(col2_payload)
+    database_ref.child("users/user_002/collections").child(col2_id).set(True)
+    add_activity("user_002", "collection", col2_id)
 
     print("Collections created.")
 

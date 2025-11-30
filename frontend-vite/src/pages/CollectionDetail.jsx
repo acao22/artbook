@@ -54,7 +54,7 @@ export default function CollectionDetail({
       </button>
 
       <div className="grid gap-6 md:grid-cols-[280px_1fr] items-start">
-        <div className="rounded-3xl overflow-hidden border border-[#f1e9de] bg-[#f4efe4]">
+        <div className="rounded-3xl overflow-hidden border border-[#f1e9de] bg-[#f4efe4] aspect-square">
           <img
             src={collection.cover || FALLBACK_IMG}
             alt={collection.title}
@@ -121,14 +121,6 @@ export default function CollectionDetail({
                   <p className="text-xs uppercase tracking-wide text-gray-500">
                     {(item.type || item.mediaType || "other").toUpperCase()}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(item.id)}
-                    className="mt-3 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-black"
-                  >
-                    <X size={12} />
-                    Remove
-                  </button>
                 </div>
               </div>
             ))}

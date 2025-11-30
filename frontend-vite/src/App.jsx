@@ -6,6 +6,7 @@ import {
   Navigate,
   Outlet,
   useNavigate,
+  useLocation,
 } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
@@ -24,49 +25,22 @@ import NotesPage from "./pages/NotesPage";
 import EmptyPage from "./pages/EmptyPage";
 import CollectionDetail from "./pages/CollectionDetail";
 
-import sushi from "./assets/sushi.png";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-const COLLECTION_FIXTURES = [
-  {
-    id: "col-1",
-    title: "Comfort Cinema",
-    cover: sushi,
-    items: [],
-    itemIds: [],
-  },
-  {
-    id: "col-2",
-    title: "Cozy Autumn Reads",
-    cover: sushi,
-    items: [],
-    itemIds: [],
-  },
-  {
-    id: "col-3",
-    title: "Gallery Hopping",
-    cover: sushi,
-    items: [],
-    itemIds: [],
-  },
-  {
-    id: "col-4",
-    title: "Sunlit Soundtracks",
-    cover: sushi,
-    items: [],
-    itemIds: [],
-  },
-];
-
-const STACK_FILTERS = ["music", "books", "movies", "other"];
+const STACK_FILTERS = ["music", "movies", "tv", "books", "other"];
 const STUB_FILTERS = ["concerts", "museums", "theatre", "other"];
 const ALL_FILTERS = [...new Set([...STACK_FILTERS, ...STUB_FILTERS])];
 const USER_ID = "user_001";
 
 function ProfileLayout() {
+  const location = useLocation();
+  const hideHeader =
+    typeof location.pathname === "string" &&
+    /\/profile\/collections\/[^/]+/.test(location.pathname);
+
   return (
     <>
-      <ProfileHeader />
+      {!hideHeader && <ProfileHeader />}
       <Outlet />
     </>
   );
@@ -78,17 +52,6 @@ function ProfileCollectionsSection({ collections, onAddCollection }) {
 
   return (
     <section className="px-8 mt-6 space-y-5">
-
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={onAddCollection}
-          className="rounded-full bg-[#CAC444] text-black px-4 py-2 text-sm font-semibold shadow-sm hover:bg-[#b5b03f] transition"
-        >
-          + New collection
-        </button>
-      </div>
-
       {hasCollections ? (
         <Gallery
           items={collections}
@@ -109,7 +72,7 @@ function ProfileCollectionsSection({ collections, onAddCollection }) {
 export default function App() {
   const [stackItems, setStackItems] = useState([]);
   const [stubItems, setStubItems] = useState([]);
-  const [collections, setCollections] = useState(COLLECTION_FIXTURES);
+  const [collections, setCollections] = useState([]);
   const [collectionModalState, setCollectionModalState] = useState({
     open: false,
     collection: null,
@@ -127,6 +90,8 @@ export default function App() {
 
   const [sortBy, setSortBy] = useState("default");
   const [searchQuery, setSearchQuery] = useState("");
+  const [stackHeartedOnly, setStackHeartedOnly] = useState(false);
+  const [stubHeartedOnly, setStubHeartedOnly] = useState(false);
 
   // --------------------------------------
   // MODAL
@@ -212,10 +177,59 @@ export default function App() {
     }
   }, []);
 
+  const loadCollections = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:5000/api/collections?userId=${USER_ID}`
+      );
+      if (!res.ok) {
+        console.error("Failed to fetch collections:", res.status);
+        return;
+      }
+      const data = await res.json();
+      const normalized =
+        (data.results || []).map((collection) => {
+          const rawItems = Array.isArray(collection.items)
+            ? collection.items
+            : collection.items && typeof collection.items === "object"
+            ? Object.values(collection.items)
+            : [];
+          const rawItemIds = Array.isArray(collection.itemIds)
+            ? collection.itemIds
+            : collection.itemIds && typeof collection.itemIds === "object"
+            ? Object.values(collection.itemIds)
+            : collection.itemIds;
+
+          return {
+            id:
+              collection.id?.toString() ||
+              `collection-${Math.random().toString(36).slice(2)}`,
+            title: collection.title || "Untitled collection",
+            subtitle: collection.subtitle || "",
+            cover: collection.cover || "",
+            items: rawItems.map((item) => ({
+              ...item,
+              id: item.id?.toString() || `col-item-${Math.random().toString(36).slice(2)}`,
+              coverUrl: item.coverUrl || item.img || "",
+              img: item.coverUrl || item.img || "",
+              type: (item.type || item.mediaType || "other").toLowerCase(),
+            })),
+            itemIds: (rawItemIds || []).map((id) => id?.toString?.() ?? id?.toString()),
+            createdAt: collection.createdAt || null,
+          };
+        }) ?? [];
+
+      setCollections(normalized);
+    } catch (err) {
+      console.error("Failed to fetch collections:", err);
+    }
+  }, []);
+
   useEffect(() => {
     loadStacks();
     loadStubs();
-  }, [loadStacks, loadStubs]);
+    loadCollections();
+  }, [loadStacks, loadStubs, loadCollections]);
 
   const handleStackSaved = useCallback(
     (newItem) => {
@@ -262,54 +276,125 @@ export default function App() {
   }, []);
 
   const handleCollectionSave = useCallback(
-    (collectionPayload) => {
-      setCollections((prev) => {
-        const exists = prev.some((collection) => collection.id === collectionPayload.id);
-        if (exists) {
-          return prev.map((collection) =>
-            collection.id === collectionPayload.id ? collectionPayload : collection
-          );
+    async (collectionPayload) => {
+      const isEdit = Boolean(collectionPayload.id);
+      const url = isEdit
+        ? `http://127.0.0.1:5000/api/collections/${collectionPayload.id}`
+        : "http://127.0.0.1:5000/api/collections";
+      const method = isEdit ? "PATCH" : "POST";
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: USER_ID,
+            title: collectionPayload.title,
+            subtitle: collectionPayload.subtitle,
+            cover: collectionPayload.cover,
+            items: collectionPayload.items,
+            itemIds: collectionPayload.itemIds,
+          }),
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error("Failed to save collection:", res.status, errorText);
+          alert("Unable to save collection. Please try again.");
+          return;
         }
-        return [...prev, collectionPayload];
-      });
-      closeCollectionModal();
+
+        await loadCollections();
+        closeCollectionModal();
+      } catch (err) {
+        console.error("Failed to save collection:", err);
+        alert("Unable to save collection. Please try again.");
+      }
     },
-    [closeCollectionModal]
+    [closeCollectionModal, loadCollections]
   );
 
-  const handleCollectionDelete = useCallback((collectionId) => {
-    setCollections((prev) =>
-      prev.filter((collection) => collection.id?.toString() !== collectionId?.toString())
-    );
-  }, []);
+  const handleCollectionDelete = useCallback(
+    async (collectionId) => {
+      if (!collectionId) return;
+      try {
+        const res = await fetch(
+          `http://127.0.0.1:5000/api/collections/${collectionId}`,
+          {
+            method: "DELETE",
+          }
+        );
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error("Failed to delete collection:", res.status, errorText);
+          alert("Unable to delete this collection right now.");
+          return;
+        }
+        await loadCollections();
+      } catch (err) {
+        console.error("Failed to delete collection:", err);
+        alert("Unable to delete this collection right now.");
+      }
+    },
+    [loadCollections]
+  );
 
-  const handleCollectionItemRemove = useCallback((collectionId, itemId) => {
-    const normalizedItemId = itemId?.toString();
-    setCollections((prev) =>
-      prev.map((collection) => {
-        if (collection.id !== collectionId) return collection;
-        const nextItems = (collection.items || []).filter(
-          (item) => item.id?.toString() !== normalizedItemId
+  const handleCollectionItemRemove = useCallback(
+    async (collectionId, itemId) => {
+      const normalizedItemId = itemId?.toString();
+      const collection = collections.find(
+        (entry) => entry.id?.toString() === collectionId?.toString()
+      );
+      if (!collection) return;
+
+      const nextItems = (collection.items || []).filter(
+        (item) => item.id?.toString() !== normalizedItemId
+      );
+      const nextItemIds = (collection.itemIds || []).filter(
+        (id) => id?.toString() !== normalizedItemId
+      );
+
+      try {
+        const res = await fetch(
+          `http://127.0.0.1:5000/api/collections/${collectionId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              items: nextItems,
+              itemIds: nextItemIds,
+            }),
+          }
         );
-        const nextItemIds = (collection.itemIds || []).filter(
-          (id) => id?.toString() !== normalizedItemId
-        );
-        return {
-          ...collection,
-          items: nextItems,
-          itemIds: nextItemIds,
-        };
-      })
-    );
-  }, []);
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error("Failed to update collection:", res.status, errorText);
+          alert("Unable to update this collection right now.");
+          return;
+        }
+
+        await loadCollections();
+      } catch (err) {
+        console.error("Failed to update collection:", err);
+        alert("Unable to update this collection right now.");
+      }
+    },
+    [collections, loadCollections]
+  );
   const filterAndSort = useCallback(
-    (list, allowedTypes) => {
+    (list, allowedTypes, options = {}) => {
+      const { heartedOnly = false } = options;
       let next = list.filter((item) => {
         const typeKey = (item.type || item.mediaType || "other").toLowerCase();
         if (!allowedTypes.includes(typeKey)) return false;
         if (filters[typeKey] === false) return false;
         return true;
       });
+
+      if (heartedOnly) {
+        next = next.filter((item) => Boolean(item.hearted));
+      }
 
       if (normalizedQuery) {
         next = next.filter((item) =>
@@ -329,14 +414,28 @@ export default function App() {
   );
 
   const filteredStackItems = useMemo(
-    () => filterAndSort(stackItems, STACK_FILTERS),
-    [stackItems, filterAndSort]
+    () => filterAndSort(stackItems, STACK_FILTERS, { heartedOnly: stackHeartedOnly }),
+    [stackItems, filterAndSort, stackHeartedOnly]
   );
 
   const filteredStubItems = useMemo(
-    () => filterAndSort(stubItems, STUB_FILTERS),
-    [stubItems, filterAndSort]
+    () => filterAndSort(stubItems, STUB_FILTERS, { heartedOnly: stubHeartedOnly }),
+    [stubItems, filterAndSort, stubHeartedOnly]
   );
+
+  const sortedCollections = useMemo(() => {
+    if (sortBy === "title") {
+      return [...collections].sort((a, b) =>
+        (a.title || "").localeCompare(b.title || "")
+      );
+    }
+    if (sortBy === "recent") {
+      return [...collections].sort(
+        (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+      );
+    }
+    return collections;
+  }, [collections, sortBy]);
 
   // --------------------------------------
   // RENDER
@@ -377,6 +476,8 @@ export default function App() {
                     onSortChange={setSortBy}
                     openModal={() => openModal("stack")}
                     visibleFilters={STACK_FILTERS}
+                    heartedOnlyActive={stackHeartedOnly}
+                    onHeartedToggle={(next) => setStackHeartedOnly(next)}
                   />
                   <Gallery items={filteredStackItems} />
                 </>
@@ -394,6 +495,8 @@ export default function App() {
                     onSortChange={setSortBy}
                     openModal={() => openModal("stubs")}
                     visibleFilters={STUB_FILTERS}
+                    heartedOnlyActive={stubHeartedOnly}
+                    onHeartedToggle={(next) => setStubHeartedOnly(next)}
                   />
                   <Gallery
                     items={filteredStubItems}
@@ -406,10 +509,23 @@ export default function App() {
             <Route
               path="collections"
               element={
-                <ProfileCollectionsSection
-                  collections={collections}
-                  onAddCollection={() => openCollectionModal()}
-                />
+                <>
+                  <FilterBar
+                    activeFilters={{}}
+                    onToggleFilter={() => {}}
+                    sortBy={sortBy}
+                    onSortChange={setSortBy}
+                    openModal={() => openCollectionModal()}
+                    visibleFilters={[]}
+                    heartedOnlyActive={undefined}
+                    onHeartedToggle={undefined}
+                    hideFilters
+                  />
+                  <ProfileCollectionsSection
+                    collections={sortedCollections}
+                    onAddCollection={() => openCollectionModal()}
+                  />
+                </>
               }
             />
             <Route

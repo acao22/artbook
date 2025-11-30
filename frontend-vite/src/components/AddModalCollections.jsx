@@ -130,13 +130,12 @@ export default function AddModalCollections({
     }
 
     const payload = {
-      id: initialCollection?.id || `col-${Date.now()}`,
+      ...(initialCollection?.id ? { id: initialCollection.id } : {}),
       title: title.trim(),
       subtitle: description.trim(),
       cover: imagePreview || initialCollection?.cover || FALLBACK_IMG,
       items: selectedItems,
       itemIds: selectedIds,
-      createdAt: initialCollection?.createdAt ?? Date.now(),
     };
 
     onSave(payload);

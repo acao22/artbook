@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { Button } from "@/components/ui/button";
-import { Plus, ChevronDown } from "lucide-react";
+import { Plus, ChevronDown, Heart } from "lucide-react";
 
 import {
   Tooltip,
@@ -20,10 +20,10 @@ import {
 } from "@/components/ui/tooltip";
 
 const LABELS = {
-  artwork: "Artwork",
   music: "Music",
-  books: "Books",
   movies: "Movies",
+  tv: "TV",
+  books: "Books",
   concerts: "Concerts",
   museums: "Museums",
   theatre: "Theatre",
@@ -37,6 +37,10 @@ export default function FilterBar({
   onSortChange,
   openModal,
   visibleFilters,
+  heartedOnlyActive,
+  onHeartedToggle,
+  hideFilters = false,
+  hideSort = false,
 }) {
   // Determine which filters to show
   const filtersToRender =
@@ -62,80 +66,119 @@ export default function FilterBar({
     <div className="max-w-6xl mx-auto px-6 mt-6 mb-4 flex items-center justify-between flex-wrap gap-4">
 
       {/* LEFT SIDE — Filter Buttons */}
-      <div className="flex items-center gap-3">
+      {!hideFilters && (
+        <div className="flex items-center gap-3">
 
-        {/* Label to make it clear these are filters */}
-        <span className="text-sm font-medium text-muted-foreground tracking-wide">
-          Filters:
-        </span>
+          {/* Label to make it clear these are filters */}
+          <span className="text-sm font-medium text-muted-foreground tracking-wide">
+            Filters:
+          </span>
 
-        <ToggleGroup
-          type="multiple"
-          value={activeKeys}
-          onValueChange={handleFilterChange}
-          className="flex gap-2"
-        >
-          {filtersToRender.map((key) => (
-            <ToggleGroupItem
-              key={key}
-              value={key}
-              className="
-                px-4 py-1.5 rounded-full text-sm transition-all duration-200
-                border border-[#d6d3cd] shadow-sm
+          <ToggleGroup
+            type="multiple"
+            value={activeKeys}
+            onValueChange={handleFilterChange}
+            className="flex gap-2"
+          >
+            {filtersToRender.map((key) => (
+              <ToggleGroupItem
+                key={key}
+                value={key}
+                className="
+                  px-4 py-1.5 rounded-full text-sm transition-all duration-200
+                  border border-[#d6d3cd] shadow-sm
 
-                hover:bg-[#f0ede5] hover:shadow-md hover:-translate-y-[1px]
+                  hover:bg-[#f0ede5] hover:shadow-md hover:-translate-y-[1px]
+                  active:scale-95
+
+                  data-[state=on]:bg-[#CAC444]
+                  data-[state=on]:text-black
+                  data-[state=on]:border-[#CAC444]
+                  data-[state=on]:shadow-md
+                "
+              >
+                {LABELS[key] || key}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+
+          {typeof heartedOnlyActive === "boolean" && (
+            <button
+              type="button"
+              onClick={() => onHeartedToggle?.(!heartedOnlyActive)}
+              className={`
+                px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200
+                shadow-sm flex items-center justify-center
                 active:scale-95
 
-                data-[state=on]:bg-[#CAC444]
-                data-[state=on]:text-black
-                data-[state=on]:border-[#CAC444]
-                data-[state=on]:shadow-md
-              "
+                hover:shadow-md hover:-translate-y-[1px]
+
+                h-[38px]
+
+                ${heartedOnlyActive ? `
+                  bg-[#CAC444]
+                  text-black
+                  border border-[#CAC444]   /* green border when selected */
+                  shadow-md
+                ` : `
+                  bg-[#f0ede5]
+                  text-gray-600
+                  border border-[#d6d3cd]
+                `}
+              `}
             >
-              {LABELS[key] || key}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      </div>
+              <Heart
+                size={18}
+                className={`
+                  transition-colors
+                  ${heartedOnlyActive ? "fill-black text-black" : "text-gray-500"}
+                `}
+              />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* RIGHT SIDE — Sort & Add Buttons */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 ml-auto">
 
         {/* SORT DROPDOWN */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              className="
-                flex items-center gap-2 rounded-lg px-3 py-1.5 bg-white shadow-sm
-                transition-all duration-200
+        {!hideSort && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="
+                  flex items-center gap-2 rounded-lg px-3 py-1.5 bg-white shadow-sm
+                  transition-all duration-200
 
-                hover:shadow-md hover:-translate-y-[1px] hover:bg-[#f3f1ea]
-                active:scale-95
-              "
+                  hover:shadow-md hover:-translate-y-[1px] hover:bg-[#f3f1ea]
+                  active:scale-95
+                "
+              >
+                Sort
+                <ChevronDown size={18} />
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent
+              align="end"
+              className="w-32 bg-white border border-[#e9e4db] shadow-lg"
             >
-              Sort
-              <ChevronDown size={18} />
-            </Button>
-          </DropdownMenuTrigger>
+              <DropdownMenuItem onClick={() => onSortChange("default")}>
+                Default
+              </DropdownMenuItem>
 
-          <DropdownMenuContent
-            align="end"
-            className="w-32 bg-white border border-[#e9e4db] shadow-lg"
-          >
-            <DropdownMenuItem onClick={() => onSortChange("default")}>
-              Default
-            </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onSortChange("title")}>
+                Title
+              </DropdownMenuItem>
 
-            <DropdownMenuItem onClick={() => onSortChange("title")}>
-              Title
-            </DropdownMenuItem>
-
-            <DropdownMenuItem onClick={() => onSortChange("recent")}>
-              Most Recent
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuItem onClick={() => onSortChange("recent")}>
+                Most Recent
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         {/* ADD ITEM BUTTON */}
         <Tooltip>
