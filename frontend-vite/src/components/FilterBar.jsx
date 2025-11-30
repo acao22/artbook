@@ -12,6 +12,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Plus, ChevronDown } from "lucide-react";
+
 import {
   Tooltip,
   TooltipTrigger,
@@ -37,9 +38,11 @@ export default function FilterBar({
   openModal,
   visibleFilters,
 }) {
+  // Determine which filters to show
   const filtersToRender =
-    (visibleFilters && visibleFilters.length > 0 ? visibleFilters : Object.keys(activeFilters)) ??
-    [];
+    visibleFilters && visibleFilters.length > 0
+      ? visibleFilters
+      : Object.keys(activeFilters);
 
   const activeKeys = filtersToRender.filter((key) => activeFilters[key] === true);
 
@@ -56,29 +59,46 @@ export default function FilterBar({
   };
 
   return (
-    <div className="px-8 mt-4 mb-3 flex items-center justify-between flex-wrap gap-4">
+    <div className="max-w-6xl mx-auto px-6 mt-6 mb-4 flex items-center justify-between flex-wrap gap-4">
 
-      {/* LEFT FILTER BUTTOSN */}
-      <ToggleGroup
-        type="multiple"
-        value={activeKeys}
-        onValueChange={handleFilterChange}
-        className="flex gap-3"
-      >
-        {filtersToRender.map((key) => (
-          <ToggleGroupItem
-            key={key}
-            value={key}
-            className="px-4 py-1.5 rounded-full text-sm 
-          border border-[#d6d3cd]
-          data-[state=on]:bg-[#CAC444] data-[state=on]:text-black"
-          >
-            {LABELS[key] || key}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
+      {/* LEFT SIDE — Filter Buttons */}
+      <div className="flex items-center gap-3">
 
-      {/* RIGHT SIDE: sort and add */}
+        {/* Label to make it clear these are filters */}
+        <span className="text-sm font-medium text-muted-foreground tracking-wide">
+          Filters:
+        </span>
+
+        <ToggleGroup
+          type="multiple"
+          value={activeKeys}
+          onValueChange={handleFilterChange}
+          className="flex gap-2"
+        >
+          {filtersToRender.map((key) => (
+            <ToggleGroupItem
+              key={key}
+              value={key}
+              className="
+                px-4 py-1.5 rounded-full text-sm transition-all duration-200
+                border border-[#d6d3cd] shadow-sm
+
+                hover:bg-[#f0ede5] hover:shadow-md hover:-translate-y-[1px]
+                active:scale-95
+
+                data-[state=on]:bg-[#CAC444]
+                data-[state=on]:text-black
+                data-[state=on]:border-[#CAC444]
+                data-[state=on]:shadow-md
+              "
+            >
+              {LABELS[key] || key}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+
+      {/* RIGHT SIDE — Sort & Add Buttons */}
       <div className="flex items-center gap-4">
 
         {/* SORT DROPDOWN */}
@@ -86,14 +106,23 @@ export default function FilterBar({
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              className="flex items-center gap-2 rounded-lg px-3 py-1.5 bg-white"
+              className="
+                flex items-center gap-2 rounded-lg px-3 py-1.5 bg-white shadow-sm
+                transition-all duration-200
+
+                hover:shadow-md hover:-translate-y-[1px] hover:bg-[#f3f1ea]
+                active:scale-95
+              "
             >
               Sort
               <ChevronDown size={18} />
             </Button>
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="end" className="w-32 bg-white">
+          <DropdownMenuContent
+            align="end"
+            className="w-32 bg-white border border-[#e9e4db] shadow-lg"
+          >
             <DropdownMenuItem onClick={() => onSortChange("default")}>
               Default
             </DropdownMenuItem>
@@ -113,12 +142,18 @@ export default function FilterBar({
           <TooltipTrigger asChild>
             <Button
               onClick={openModal}
-              className="rounded-full bg-[#CAC444] hover:bg-[#b5b03f]
-              text-black shadow-md w-10 h-10 flex items-center justify-center"
+              className="
+                rounded-full bg-[#CAC444] text-black shadow-md w-10 h-10
+                flex items-center justify-center
+
+                hover:bg-[#b5b03f] hover:shadow-lg hover:-translate-y-[1px]
+                active:scale-95 transition-all duration-200
+              "
             >
               <Plus size={22} />
             </Button>
           </TooltipTrigger>
+
           <TooltipContent>Add new item</TooltipContent>
         </Tooltip>
       </div>

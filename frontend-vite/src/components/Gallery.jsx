@@ -82,6 +82,7 @@ export default function Gallery({
 
   if (variant === "collections") {
     return (
+      <div className="max-w-6xl mx-auto px-2 mt-6">
       <div className="grid gap-6 px-8 mt-8 sm:grid-cols-2 lg:grid-cols-3">
         {displayItems.map((collection) => (
           <button
@@ -108,10 +109,12 @@ export default function Gallery({
           </button>
         ))}
       </div>
+      </div>
     );
   }
 
   return (
+    <div className="max-w-7xl mx-auto mt-6">
     <div
       className="
         columns-2 sm:columns-3 md:columns-4 lg:columns-5
@@ -127,6 +130,7 @@ export default function Gallery({
           />
         </div>
       ))}
+    </div>
     </div>
   );
 }
