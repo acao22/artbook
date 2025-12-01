@@ -4,6 +4,7 @@ from firebase_setup import database_ref
 from flask_cors import CORS
 import time
 import base64
+from typing import Tuple
 
 app = Flask(__name__)
 # CORS(app, origins=["http://localhost:3000"])
@@ -12,6 +13,24 @@ CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 SPOTIFY_CLIENT_ID = "fa717cc062404cdd81374a4145725899"
 SPOTIFY_CLIENT_SECRET = ""
 TMDB_API_KEY = "1f655943c2cbd205457f62599e088978"
+
+def build_note_content(title: str | None, body: str | None) -> str:
+    parts = []
+    if title and title.strip():
+        parts.append(title.strip())
+    if body and body.strip():
+        parts.append(body.strip())
+    return "\n".join(parts).strip()
+
+
+def split_note_content(content: str | None) -> Tuple[str, str]:
+    if not content:
+        return "", ""
+    lines = content.split("\n")
+    title = lines[0] if lines else ""
+    body = "\n".join(lines[1:]).strip() if len(lines) > 1 else ""
+    return title, body
+
 
 @app.route("/")
 def hello():
@@ -126,7 +145,9 @@ def create_note():
     user_id = data.get("userId")
     stack_id = data.get("stackId")
     stub_id = data.get("stubId")
-    content = data.get("content")
+    content = (data.get("content") or "").strip()
+    if not content:
+        content = build_note_content(data.get("title"), data.get("body"))
     is_public = data.get("isPublic", True)
 
     if not user_id or not content:
@@ -168,17 +189,28 @@ def get_notes():
 @app.route("/api/notes/<note_id>", methods=["PATCH"])
 def update_note(note_id):
     data = request.get_json() or {}
-    allowed_keys = {"stackId", "stubId", "content", "isPublic"}
+    allowed_keys = {"stackId", "stubId", "isPublic"}
     updates = {key: data.get(key) for key in allowed_keys if key in data}
-
-    if not updates:
-        return jsonify({"error": "No valid fields provided"}), 400
+    content_override = (data.get("content") or "").strip()
+    title_override = data.get("title")
+    body_override = data.get("body")
 
     note_ref = database_ref.child("notes").child(note_id)
     existing = note_ref.get()
 
     if not existing:
         return jsonify({"error": "Note not found"}), 404
+
+    if content_override:
+        updates["content"] = content_override
+    elif title_override is not None or body_override is not None:
+        current_title, current_body = split_note_content(existing.get("content"))
+        new_title = title_override if title_override is not None else current_title
+        new_body = body_override if body_override is not None else current_body
+        updates["content"] = build_note_content(new_title, new_body)
+
+    if not updates:
+        return jsonify({"error": "No valid fields provided"}), 400
 
     note_ref.update(updates)
     latest = note_ref.get() or {}
@@ -290,6 +322,7 @@ def add_stub():
         "title": title,
         "date": date,
         "coverUrl": cover_url,
+        "hearted": bool(data.get("hearted", False)),
         "createdAt": int(time.time())
     })
 
@@ -312,6 +345,22 @@ def get_stubs():
         results.append({"id": stub_id, **stub})
 
     return jsonify({"results": results})
+
+
+@app.route("/api/stubs/<stub_id>/heart", methods=["PATCH"])
+def update_stub_heart(stub_id):
+    data = request.get_json() or {}
+    new_val = data.get("hearted")
+
+    if new_val is None:
+        return jsonify({"error": "Missing 'hearted' field"}), 400
+
+    stub_ref = database_ref.child("stubs").child(stub_id)
+    if not stub_ref.get():
+        return jsonify({"error": "Stub not found"}), 404
+
+    stub_ref.update({"hearted": bool(new_val)})
+    return jsonify({"message": "Stub heart updated", "hearted": bool(new_val)})
 
 
 def sanitize_collection_items(items):
@@ -443,8 +492,117 @@ def delete_collection(collection_id):
     user_id = existing.get("userId")
     if user_id:
         database_ref.child(f"users/{user_id}/collections").child(collection_id).delete()
-
     return jsonify({"message": "Collection deleted"})
+
+
+# --------------------------------------
+# SEARCH ENDPOINTS
+# --------------------------------------
+def normalize_query(value):
+    return (value or "").strip().lower()
+
+
+@app.route("/api/search/profiles", methods=["GET"])
+def search_profiles():
+    query = normalize_query(request.args.get("query"))
+    if not query:
+        return jsonify({"results": []})
+
+    users = database_ref.child("users").get() or {}
+    results = []
+
+    for user_id, user in users.items():
+        username = (user.get("username") or "").strip()
+        if not username:
+            continue
+        if query not in username.lower():
+            continue
+
+        followers = user.get("followers") or {}
+        following = user.get("following") or {}
+
+        results.append({
+            "id": user_id,
+            "username": username,
+            "followers": len(followers),
+            "following": len(following),
+        })
+
+    return jsonify({"results": results})
+
+
+@app.route("/api/search/collections", methods=["GET"])
+def search_collections():
+    query = normalize_query(request.args.get("query"))
+    if not query:
+        return jsonify({"results": []})
+
+    collections = database_ref.child("collections").get() or {}
+    users = database_ref.child("users").get() or {}
+    results = []
+
+    for collection_id, collection in collections.items():
+        title = (collection.get("title") or "").strip()
+        subtitle = (collection.get("subtitle") or "").strip()
+        combined = f"{title} {subtitle}".strip().lower()
+        if query not in combined:
+            continue
+
+        owner_id = collection.get("userId")
+        owner_username = ""
+        if owner_id and owner_id in users:
+            owner_username = users[owner_id].get("username") or ""
+
+        results.append({
+            "id": collection_id,
+            "title": title or "Untitled collection",
+            "subtitle": subtitle,
+            "cover": collection.get("cover") or "",
+            "userId": owner_id,
+            "username": owner_username,
+            "itemCount": len(collection.get("items") or []),
+        })
+
+    return jsonify({"results": results})
+
+
+@app.route("/api/search/notes", methods=["GET"])
+def search_notes():
+    query = normalize_query(request.args.get("query"))
+    if not query:
+        return jsonify({"results": []})
+
+    notes = database_ref.child("notes").get() or {}
+    users = database_ref.child("users").get() or {}
+    results = []
+
+    for note_id, note in notes.items():
+        if note.get("isPublic", True) is False:
+            continue
+
+        content = (note.get("content") or "").strip()
+        if query not in content.lower():
+            continue
+
+        lines = content.split("\n")
+        title = lines[0] if lines else "Untitled note"
+        body = "\n".join(lines[1:]).strip()
+        owner_id = note.get("userId")
+        owner_username = ""
+        if owner_id and owner_id in users:
+            owner_username = users[owner_id].get("username") or ""
+
+        results.append({
+            "id": note_id,
+            "title": title or "Untitled note",
+            "body": body,
+            "userId": owner_id,
+            "username": owner_username,
+            "createdAt": note.get("createdAt"),
+        })
+
+    return jsonify({"results": results})
+
 
 if __name__ == "__main__":
     app.run(debug=True)

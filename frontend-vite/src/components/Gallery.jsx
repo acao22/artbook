@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import GalleryItem from "./GalleryItem";
+import { Heart } from "lucide-react";
 
 const FALLBACK_IMG =
   "https://via.placeholder.com/400x400/DDD7C8/8B7E6A?text=No+Image";
@@ -9,6 +10,7 @@ export default function Gallery({
   variant = "masonry",
   allowHeartToggle = true,
   onCollectionClick,
+  onHeartToggle,
 }) {
   const [fetchedItems, setFetchedItems] = useState([]);
 
@@ -85,32 +87,51 @@ export default function Gallery({
   if (variant === "collections") {
     return (
       <div className="max-w-7xl mx-auto px-4 mt-6">
-      <div className="grid gap-4 px-4 mt-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-        {displayItems.map((collection) => (
-          <button
-            key={collection.id || collection.title}
-            type="button"
-            onClick={() => onCollectionClick?.(collection)}
-            className="rounded-3xl bg-white shadow-md overflow-hidden border border-[#f1e9de] text-left transition hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#CAC444]/60"
-          >
-            <div className="aspect-square bg-[#f4efe4]">
-              <img
-                src={collection.cover || collection.img || FALLBACK_IMG}
-                alt={`${collection.title} cover art`}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="p-4 space-y-1">
-              <p className="text-base font-semibold text-gray-900">
-                {collection.title}
-              </p>
-              {collection.subtitle && (
-                <p className="text-sm text-gray-500">{collection.subtitle}</p>
-              )}
-            </div>
-          </button>
-        ))}
+        <div className="grid gap-6 px-4 mt-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+          {displayItems.map((collection) => (
+            <button
+              key={collection.id || collection.title}
+              type="button"
+              onClick={() => onCollectionClick?.(collection)}
+              className="text-left space-y-3 transition hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-[#CAC444]/60"
+            >
+              <div className="h-56 rounded-3xl overflow-hidden border border-[#f1e9de] bg-[#f4efe4] shadow-md">
+                <img
+                  src={collection.cover || collection.img || FALLBACK_IMG}
+                  alt={`${collection.title} cover art`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-base font-semibold text-gray-900 line-clamp-2">
+                  {collection.title}
+                </p>
+                {collection.subtitle && (
+                  <p className="text-sm text-gray-600 line-clamp-2">
+                    {collection.subtitle}
+                  </p>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
+    );
+  }
+
+  if (variant === "stubs") {
+    return (
+      <div className="max-w-7xl mx-auto px-6 mt-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {displayItems.map((item) => (
+            <StubGridItem
+              key={item.id || item.title}
+              item={item}
+              allowHeart={allowHeartToggle}
+              onHeartToggle={onHeartToggle}
+            />
+          ))}
+        </div>
       </div>
     );
   }
@@ -129,10 +150,77 @@ export default function Gallery({
             item={item}
             refresh={shouldFetch ? refreshGallery : undefined}
             allowHeart={allowHeartToggle}
+            onHeartToggle={onHeartToggle}
           />
         </div>
       ))}
     </div>
+    </div>
+  );
+}
+
+function StubGridItem({ item, allowHeart, onHeartToggle }) {
+  const [hearted, setHearted] = useState(Boolean(item.hearted));
+  const hasImage = Boolean(item.coverUrl || item.img);
+
+  const toggleHeart = async () => {
+    if (!allowHeart || !item?.id) return;
+    const next = !hearted;
+    setHearted(next);
+
+    try {
+      await fetch(`http://127.0.0.1:5000/api/stubs/${item.id}/heart`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hearted: next }),
+      });
+      onHeartToggle?.(item.id, next);
+    } catch (err) {
+      console.error("Failed to toggle stub heart:", err);
+      setHearted(!next);
+    }
+  };
+
+  return (
+    <div className="relative flex gap-4 p-4 rounded-3xl border border-[#eadfcc] bg-[#AEC7E0]/40 shadow-sm">
+      {hasImage && (
+        <div className="w-28 h-full rounded-2xl overflow-hidden flex-shrink-0 bg-[#f4efe4] flex items-center justify-center">
+          <img
+            src={item.coverUrl || item.img}
+            alt={item.title}
+            className="w-full h-full object-cover block"
+          />
+        </div>
+      )}
+
+      <div className="flex-1 space-y-2 text-left pr-8">
+        <p className="text-xs uppercase tracking-wide text-gray-500">
+          {(item.type || item.category || item.mediaType || "event").toUpperCase()}
+        </p>
+        <h3 className="text-lg font-semibold text-gray-900 leading-snug whitespace-pre-line">
+          {item.title}
+        </h3>
+      </div>
+
+      {allowHeart && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleHeart();
+          }}
+          className="absolute top-3 right-3"
+        >
+          <Heart
+            size={22}
+            className={
+              hearted
+                ? "fill-[#CAC444] text-[#CAC444]"
+                : "text-[#1f2a37]/30 transition-colors"
+            }
+          />
+        </button>
+      )}
     </div>
   );
 }

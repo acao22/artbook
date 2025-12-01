@@ -245,13 +245,16 @@ function AddModal({ onClose, onSave }) {
       const stackId = stackData.id;
 
       if (notesType === "New" && noteContent.trim()) {
+        const noteTitle = title ? `Notes on ${title}` : "Notes on this item";
+        const noteBody = noteContent.trim();
         await fetch("http://127.0.0.1:5000/api/notes", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId: "user_001",
             stackId,
-            content: noteContent.trim(),
+            title: noteTitle,
+            body: noteBody,
             isPublic: true,
           }),
         });

@@ -83,13 +83,13 @@ export default function AddModalCollections({
     );
   }, [initialCollection]);
 
+  const trimmedQuery = searchTerm.trim().toLowerCase();
   const filteredItems = useMemo(() => {
-    if (!searchTerm.trim()) return allItems;
-    const needle = searchTerm.toLowerCase();
+    if (!trimmedQuery) return [];
     return allItems.filter((item) =>
-      (item.title || "").toLowerCase().includes(needle)
+      (item.title || "").toLowerCase().includes(trimmedQuery)
     );
-  }, [allItems, searchTerm]);
+  }, [allItems, trimmedQuery]);
 
   const selectedItems = useMemo(
     () =>
@@ -103,9 +103,15 @@ export default function AddModalCollections({
     const key = itemId?.toString();
     if (!key) return;
 
+    const isAlreadySelected = selectedIds.includes(key);
+
     setSelectedIds((prev) =>
       prev.includes(key) ? prev.filter((id) => id !== key) : [...prev, key]
     );
+
+    if (!isAlreadySelected) {
+      setSearchTerm("");
+    }
   };
 
   const handleClickUpload = () => {
@@ -247,7 +253,11 @@ export default function AddModalCollections({
           </div>
 
           <div className="max-h-60 overflow-y-auto rounded-2xl border border-[#eadfcc] bg-white p-2 space-y-2">
-            {filteredItems.length === 0 ? (
+            {!trimmedQuery ? (
+              <p className="text-sm text-gray-500 text-center py-6">
+                Start typing to search your stack or stubs.
+              </p>
+            ) : filteredItems.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-6">
                 No results. Try a different search.
               </p>
@@ -263,7 +273,7 @@ export default function AddModalCollections({
                     className={`w-full flex items-center gap-3 rounded-2xl border px-3 py-2 text-left transition ${
                       isSelected
                         ? "border-[#CAC444] bg-[#f8f3e0]"
-                        : "border-transparent hover:border-[#e2dac9]"
+        : "border-transparent hover:border-[#e2dac9]"
                     }`}
                   >
                     <img

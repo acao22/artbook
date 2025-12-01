@@ -1,14 +1,15 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import AddNoteModal from "../components/AddNoteModal";
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import FilterBar from "../components/FilterBar";
 
 const USER_ID = "user_001";
-const NOTE_BG = "#AEC7E0";
 
 export default function NotesPage() {
   const [notes, setNotes] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [sortBy, setSortBy] = useState("default");
+  const navigate = useNavigate();
 
   const refreshNotes = async () => {
     try {
@@ -35,82 +36,118 @@ export default function NotesPage() {
     refreshNotes();
   }, []);
 
-  const noteCards = useMemo(
-    () =>
-      notes.map((note) => {
-        const [title, ...rest] = note.content.split("\n");
-        const body = rest.join("\n").trim();
-        return {
-          ...note,
-          title: title || "Untitled note",
-          body,
-        };
-      }),
-    [notes]
+  const formattedNotes = useMemo(() => {
+    return notes.map((note) => {
+      const [title, ...rest] = note.content.split("\n");
+      const body = rest.join("\n").trim();
+      return {
+        ...note,
+        title: title || "Untitled note",
+        body,
+      };
+    });
+  }, [notes]);
+
+  const sortedNotes = useMemo(() => {
+    if (sortBy === "title") {
+      return [...formattedNotes].sort((a, b) =>
+        a.title.localeCompare(b.title)
+      );
+    }
+    if (sortBy === "recent") {
+      return [...formattedNotes].sort(
+        (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+      );
+    }
+    return formattedNotes;
+  }, [formattedNotes, sortBy]);
+
+  const handleAddNote = useCallback(() => {
+    setShowModal(true);
+  }, []);
+
+  const handleNoteClick = useCallback(
+    (note) => {
+      navigate(`/profile/notes/${note.id}`);
+    },
+    [navigate]
   );
 
-  return (
-    <div className="px-8 py-10 space-y-6">
-      <div className="flex items-center justify-between">
-        <Button
-          onClick={() => setShowModal(true)}
-          className="rounded-full bg-[#CAC444] text-black shadow-md w-10 h-10 flex items-center justify-center"
-        >
-          <Plus size={18} />
-        </Button>
-      </div>
+  const handleCloseModal = useCallback(() => {
+    setShowModal(false);
+  }, []);
 
-      <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
-        {noteCards.map((note) => (
+  const handleModalSave = useCallback(() => {
+    setShowModal(false);
+    refreshNotes();
+  }, [refreshNotes]);
+
+  return (
+    <section className="pb-20">
+      <FilterBar
+        activeFilters={{}}
+        onToggleFilter={() => {}}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        openModal={handleAddNote}
+        visibleFilters={[]}
+        heartedOnlyActive={undefined}
+        onHeartedToggle={undefined}
+        hideFilters
+      />
+
+      <div className="max-w-5xl mx-auto px-6 mt-6 space-y-4">
+        {sortedNotes.map((note) => (
           <article
             key={note.id}
-            className="rounded-3xl shadow-sm flex items-center gap-4 p-4"
-            style={{ backgroundColor: NOTE_BG }}
+            role="button"
+            tabIndex={0}
+            onClick={() => handleNoteClick(note)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                handleNoteClick(note);
+              }
+            }}
+            className="rounded-3xl shadow-sm flex flex-col md:flex-row gap-4 p-5 bg-[#AEC7E0]/40 text-[#1f2a37] cursor-pointer transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#CAC444]/60"
           >
-            <div className="flex-1 space-y-2 text-[#1f2a37]">
+            <div className="flex-1 space-y-2">
               <div className="space-y-1">
                 <p className="text-xs uppercase tracking-wide text-[#1f2a37]/70">
                   {note.mediaType || "note"}
                 </p>
-                <h2 className="text-lg font-semibold line-clamp-2">
+                <h2 className="text-lg font-semibold leading-tight line-clamp-2">
                   {note.title}
                 </h2>
               </div>
               {note.body && (
                 <p className="text-sm line-clamp-2 opacity-80">{note.body}</p>
               )}
-
               <div className="pt-1 text-xs opacity-70">
                 {note.createdAt.toLocaleDateString()}
               </div>
             </div>
 
-            <div className="w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0 border border-white/40 bg-white/40">
-              {note.coverUrl ? (
+            {note.coverUrl && (
+              <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-white/40 bg-white/40 self-start md:self-center">
                 <img
                   src={note.coverUrl}
                   alt=""
                   className="w-full h-full object-cover"
                 />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-[10px] text-[#1f2a37]/60">
-                  No image
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </article>
         ))}
       </div>
 
       {showModal && (
         <AddNoteModal
-          onClose={() => setShowModal(false)}
-          onSave={() => {
-            setShowModal(false);
-            refreshNotes();
-          }}
+          initialNote={null}
+          onClose={handleCloseModal}
+          onSave={handleModalSave}
         />
       )}
-    </div>
+    </section>
   );
 }

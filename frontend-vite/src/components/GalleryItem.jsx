@@ -4,9 +4,14 @@ import { Heart } from "lucide-react";
 const FALLBACK_IMG =
   "https://via.placeholder.com/400x400/DDD7C8/8B7E6A?text=No+Image";
 
-export default function GalleryItem({ item, refresh, allowHeart = true }) {
+export default function GalleryItem({
+  item,
+  refresh,
+  allowHeart = true,
+  onHeartToggle,
+}) {
   const [hover, setHover] = useState(false);
-  const [hearted, setHearted] = useState(item.hearted);
+  const [hearted, setHearted] = useState(Boolean(item.hearted));
 
   const isStubCard = item.displayMode === "stub";
   const hasImage = Boolean(item.coverUrl || item.img);
@@ -17,16 +22,22 @@ export default function GalleryItem({ item, refresh, allowHeart = true }) {
     const newVal = !hearted;
     setHearted(newVal);
 
+    const endpoint = isStubCard
+      ? `http://127.0.0.1:5000/api/stubs/${item.id}/heart`
+      : `http://127.0.0.1:5000/api/stacks/${item.id}/heart`;
+
     try {
-      await fetch(`http://127.0.0.1:5000/api/stacks/${item.id}/heart`, {
+      await fetch(endpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hearted: newVal }),
       });
 
       refresh?.();
+      onHeartToggle?.(item.id, newVal);
     } catch (err) {
       console.error("Failed to toggle heart:", err);
+      setHearted(!newVal);
     }
   };
 
@@ -48,8 +59,10 @@ export default function GalleryItem({ item, refresh, allowHeart = true }) {
             {(item.type || item.mediaType || "other").toUpperCase()}
           </div>
           <div className="space-y-2">
-            <p className="text-lg font-semibold leading-tight">{item.title}</p>
-            {(item.creator || item.date || item.year) && (
+            <p className="text-lg font-semibold leading-tight whitespace-pre-line">
+              {item.title}
+            </p>
+            {!isStubCard && (item.creator || item.date || item.year) && (
               <p className="text-sm text-[#1f2a37]/80">
                 {item.creator || item.date || item.year}
               </p>
@@ -107,7 +120,7 @@ export default function GalleryItem({ item, refresh, allowHeart = true }) {
       )}
 
       {/* HEART BUTTON */}
-      {allowHeart && !isStubCard && (
+      {allowHeart && (
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -120,7 +133,13 @@ export default function GalleryItem({ item, refresh, allowHeart = true }) {
             className={`
               drop-shadow 
               transition-all duration-300 
-              ${hearted ? "fill-[#CAC444] text-[#CAC444]" : "text-white"}
+              ${
+                hearted
+                  ? "fill-[#CAC444] text-[#CAC444]"
+                  : isStubCard
+                  ? "text-[#1f2a37]/40"
+                  : "text-white"
+              }
               ${hover ? "scale-110" : "scale-100"}
             `}
           />

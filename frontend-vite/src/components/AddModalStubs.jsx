@@ -95,13 +95,17 @@ export default function AddModalStubs({ onClose, onSave }) {
       const stubId = data.id;
 
       if (notesType === "New" && noteContent.trim()) {
+        const sanitizedTitle = title.split("\n")[0]?.trim() || "this experience";
+        const noteTitle = `Notes on ${sanitizedTitle}`;
+        const noteBody = noteContent.trim();
         await fetch("http://127.0.0.1:5000/api/notes", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId: "user_001",
             stubId,
-            content: noteContent.trim(),
+            title: noteTitle,
+            body: noteBody,
             isPublic: true,
           }),
         });

@@ -21,7 +21,9 @@ import AddModalCollections from "./components/AddModalCollections";
 import ExplorePage from "./pages/ExplorePage";
 import CollectionsPage from "./pages/CollectionsPage";
 import NotesPage from "./pages/NotesPage";
+import NoteDetail from "./pages/NoteDetail";
 import CollectionDetail from "./pages/CollectionDetail";
+import SearchResults from "./pages/SearchResults";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -87,7 +89,6 @@ export default function App() {
   );
 
   const [sortBy, setSortBy] = useState("default");
-  const [searchQuery, setSearchQuery] = useState("");
   const [stackHeartedOnly, setStackHeartedOnly] = useState(false);
   const [stubHeartedOnly, setStubHeartedOnly] = useState(false);
 
@@ -155,7 +156,7 @@ export default function App() {
           coverUrl: item.coverUrl || "",
           img: item.coverUrl || "",
           type: (item.category || item.mediaType || "other").toLowerCase(),
-          hearted: false,
+          hearted: Boolean(item.hearted),
           date: item.date,
           displayMode: "stub",
         })) ?? [];
@@ -245,6 +246,7 @@ export default function App() {
           {
             ...newItem,
             coverUrl: newItem.coverUrl || newItem.img || "",
+            hearted: Boolean(newItem.hearted),
             displayMode: "stub",
           },
         ]);
@@ -254,7 +256,6 @@ export default function App() {
     [loadStubs]
   );
 
-  const normalizedQuery = searchQuery.toLowerCase();
   const openCollectionModal = useCallback(
     (collection = null) => {
       setCollectionModalState({ open: true, collection });
@@ -387,12 +388,6 @@ export default function App() {
         next = next.filter((item) => Boolean(item.hearted));
       }
 
-      if (normalizedQuery) {
-        next = next.filter((item) =>
-          (item.title || "").toLowerCase().includes(normalizedQuery)
-        );
-      }
-
       if (sortBy === "title") {
         next = [...next].sort((a, b) =>
           (a.title || "").localeCompare(b.title || "")
@@ -401,7 +396,7 @@ export default function App() {
 
       return next;
     },
-    [filters, normalizedQuery, sortBy]
+    [filters, sortBy]
   );
 
   const filteredStackItems = useMemo(
@@ -413,6 +408,22 @@ export default function App() {
     () => filterAndSort(stubItems, STUB_FILTERS, { heartedOnly: stubHeartedOnly }),
     [stubItems, filterAndSort, stubHeartedOnly]
   );
+
+  const handleStackHeartUpdate = useCallback((itemId, value) => {
+    setStackItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, hearted: value } : item
+      )
+    );
+  }, []);
+
+  const handleStubHeartUpdate = useCallback((itemId, value) => {
+    setStubItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, hearted: value } : item
+      )
+    );
+  }, []);
 
   const sortedCollections = useMemo(() => {
     if (sortBy === "title") {
@@ -435,13 +446,14 @@ export default function App() {
     <Router>
       <TooltipProvider>
       <div className="min-h-screen bg-[#FBF5ED]">
-        <Navbar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+        <Navbar />
 
         <Routes>
           {/* Public pages */}
           <Route path="/explore" element={<ExplorePage />} />
           <Route path="/collections" element={<CollectionsPage />} />
           <Route path="/notes" element={<CollectionsPage />} />
+          <Route path="/search" element={<SearchResults />} />
 
 
           {/* PROFILE ROUTES */}
@@ -462,7 +474,10 @@ export default function App() {
                     heartedOnlyActive={stackHeartedOnly}
                     onHeartedToggle={(next) => setStackHeartedOnly(next)}
                   />
-                  <Gallery items={filteredStackItems} />
+                  <Gallery
+                    items={filteredStackItems}
+                    onHeartToggle={handleStackHeartUpdate}
+                  />
                 </>
               }
             />
@@ -483,7 +498,8 @@ export default function App() {
                   />
                   <Gallery
                     items={filteredStubItems}
-                    allowHeartToggle={false}
+                    variant="stubs"
+                    onHeartToggle={handleStubHeartUpdate}
                   />
                 </>
               }
@@ -523,6 +539,7 @@ export default function App() {
               }
             />
             <Route path="notes" element={<NotesPage />} />
+            <Route path="notes/:noteId" element={<NoteDetail />} />
           </Route>
 
           {/* Fallback */}
