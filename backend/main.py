@@ -11,7 +11,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 SPOTIFY_CLIENT_ID = "fa717cc062404cdd81374a4145725899"
-SPOTIFY_CLIENT_SECRET = ""
+SPOTIFY_CLIENT_SECRET = "413c8edf5fbd41ce83dbbd3464d5fdb1"
 TMDB_API_KEY = "1f655943c2cbd205457f62599e088978"
 
 def build_note_content(title: str | None, body: str | None) -> str:

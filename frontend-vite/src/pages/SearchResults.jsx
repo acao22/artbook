@@ -79,7 +79,7 @@ export default function SearchResults() {
   const renderProfiles = () => (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {state.results.map((profile) => (
-        <div key={profile.id} className="rounded-3xl border border-[#eadfcc] bg-white p-5 space-y-2 shadow-sm">
+        <div key={profile.id} className="rounded-3xl border border-[#eadfcc] bg-[#AEC7E0]/40 p-5 space-y-2 shadow-sm">
           <p className="text-lg font-semibold text-gray-900">@{profile.username}</p>
           <div className="text-sm text-gray-600 flex gap-4">
             <span>{profile.followers} followers</span>
@@ -93,7 +93,7 @@ export default function SearchResults() {
   const renderCollections = () => (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {state.results.map((collection) => (
-        <div key={collection.id} className="rounded-3xl border border-[#eadfcc] bg-white shadow-sm overflow-hidden">
+        <div key={collection.id} className="rounded-3xl border border-[#eadfcc] bg-[#AEC7E0]/40 shadow-sm overflow-hidden">
           {collection.cover ? (
             <div className="aspect-video bg-[#f4efe4]">
               <img src={collection.cover} alt={collection.title} className="w-full h-full object-cover" />
@@ -121,7 +121,7 @@ export default function SearchResults() {
   const renderNotes = () => (
     <div className="space-y-4">
       {state.results.map((note) => (
-        <article key={note.id} className="rounded-3xl border border-[#eadfcc] bg-white p-5 space-y-2 shadow-sm">
+        <article key={note.id} className="rounded-3xl border border-[#eadfcc] bg-[#AEC7E0]/40 p-5 space-y-2 shadow-sm">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <p className="text-xs uppercase tracking-wide text-gray-500">by {note.username || note.userId || "Unknown"}</p>
@@ -136,7 +136,7 @@ export default function SearchResults() {
           {note.body ? (
             <p className="text-sm text-gray-600 line-clamp-3 whitespace-pre-line">{note.body}</p>
           ) : (
-            <p className="text-sm text-gray-500">No additional content.</p>
+            <p className="text-sm text-gray-500">See More</p>
           )}
         </article>
       ))}

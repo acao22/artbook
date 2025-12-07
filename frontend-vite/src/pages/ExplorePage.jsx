@@ -50,18 +50,18 @@ const RECENTLY_ADDED = [
 const RECENT_NOTES = [
   {
     id: "note-1",
-    title: "On my favorite album of the 21st century",
-    body: "Track by track notes are as follows.",
-    author: "@adrian",
-    mediaType: "music",
-    createdAt: "2h ago",
-  },
-  {
-    id: "note-2",
     title: "Recent trip to MoMA",
     body: "Special exhibitions and highlights.",
     author: "@milo",
     mediaType: "museums",
+    createdAt: "2h ago",
+  },
+  {
+    id: "note-2",
+    title: "On my favorite album of the 21st century",
+    body: "Track by track notes are as follows.",
+    author: "@adrian",
+    mediaType: "music",
     createdAt: "Yesterday",
   },
   {
