@@ -10,3 +10,13 @@ __pycache__/
 servicekey.json
 backend/servicekey.json
 **/servicekey.json
+# Environment variables - ignore actual .env files but keep .env.example
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend-vite/.env
+# But allow .env.example files to be committed
+!.env.example
+!backend/.env.example
+!frontend-vite/.env.example

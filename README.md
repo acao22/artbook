@@ -1,70 +1,116 @@
-# Getting Started with Create React App
+# Artsbook
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Art. It’s what makes life colorful. We interact with the arts often; we feel things and we learn things. We want to remember these interactions. 
 
-## Available Scripts
+Keeping track of everything you read, watch, listen to, and experience across the arts is difficult…
 
-In the project directory, you can run:
+So here is Artsbook! A unified space to track, reflect on, and explore everything you experience in the arts and humanities.
 
-### `npm start`
+## Features
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- User authentication with Firebase
+- Personal stacks (books, movies, TV, music)
+- Stubs (concerts, museums, events)
+- Collections and notes
+- Follow other users and discover content
+- Search for people, collections, and notes
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Setup
 
-### `npm test`
+### Prerequisites
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Python 3.9+
+- Node.js 18+
+- Firebase project with Realtime Database enabled
+- Spotify API credentials (for music search)
+- TMDB API key (for movies/TV search)
 
-### `npm run build`
+### Backend Setup
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+2. Create a virtual environment and install dependencies:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+3. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` and add your API credentials:
+   - `SPOTIFY_CLIENT_ID` - From Spotify Developer Dashboard
+   - `SPOTIFY_CLIENT_SECRET` - From Spotify Developer Dashboard
+   - `TMDB_API_KEY` - From TMDB API Settings
 
-### `npm run eject`
+4. Place your Firebase service account key as `servicekey.json` in the backend directory.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+5. Run the backend server:
+   ```bash
+   python main.py
+   ```
+   The API will be available at `http://127.0.0.1:5000`
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Frontend Setup
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend-vite
+   ```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-## Learn More
+3. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` and add your Firebase configuration:
+   - `VITE_FIREBASE_API_KEY`
+   - `VITE_FIREBASE_AUTH_DOMAIN`
+   - `VITE_FIREBASE_DATABASE_URL`
+   - `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_STORAGE_BUCKET`
+   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+   - `VITE_FIREBASE_APP_ID`
+   
+   Get these values from Firebase Console > Project Settings > General > Your apps
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
+   The app will be available at `http://localhost:5173`
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Project Structure
 
-### Code Splitting
+- `backend/` - Flask API server with Firebase Admin SDK
+- `frontend-vite/` - React frontend with Vite
+- `backend/.env` - Backend environment variables (not committed)
+- `frontend-vite/.env` - Frontend environment variables (not committed)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## API Endpoints
 
-### Analyzing the Bundle Size
+- `GET /api/stacks` - Get user's stack items
+- `POST /api/stacks` - Add item to stack
+- `GET /api/stubs` - Get user's stubs
+- `POST /api/stubs` - Add stub
+- `GET /api/notes` - Get notes
+- `POST /api/notes` - Create note
+- `GET /api/search/profiles` - Search users
+- `POST /api/auth/verify` - Verify Firebase token
+- `POST /api/users/<id>/follow` - Follow user
+- `DELETE /api/users/<id>/follow` - Unfollow user
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Development
 
-### Making a Progressive Web App
+The backend uses Flask with CORS enabled for development. The frontend uses Vite for fast hot module replacement.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Make sure both servers are running simultaneously for full functionality.

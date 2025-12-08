@@ -4,17 +4,30 @@ from firebase_setup import database_ref
 from flask_cors import CORS
 import time
 import base64
-from typing import Tuple
+from typing import Tuple, Optional
+import firebase_admin
+from firebase_admin import auth
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 # CORS(app, origins=["http://localhost:3000"])
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
-SPOTIFY_CLIENT_ID = "fa717cc062404cdd81374a4145725899"
-SPOTIFY_CLIENT_SECRET = ""
-TMDB_API_KEY = "1f655943c2cbd205457f62599e088978"
+SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "")
+SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET", "")
+TMDB_API_KEY = os.getenv("TMDB_API_KEY", "")
 
-def build_note_content(title: str | None, body: str | None) -> str:
+# Warn if API keys are missing
+if not SPOTIFY_CLIENT_ID or not SPOTIFY_CLIENT_SECRET:
+    print("⚠️  Warning: Spotify API credentials not found in .env file. Music search will not work.")
+if not TMDB_API_KEY:
+    print("⚠️  Warning: TMDB API key not found in .env file. Movie/TV search will not work.")
+
+def build_note_content(title: Optional[str], body: Optional[str]) -> str:
     parts = []
     if title and title.strip():
         parts.append(title.strip())
@@ -23,7 +36,7 @@ def build_note_content(title: str | None, body: str | None) -> str:
     return "\n".join(parts).strip()
 
 
-def split_note_content(content: str | None) -> Tuple[str, str]:
+def split_note_content(content: Optional[str]) -> Tuple[str, str]:
     if not content:
         return "", ""
     lines = content.split("\n")
@@ -186,6 +199,9 @@ def get_notes():
     filtered = []
 
     for note_id, note in all_notes.items():
+        # If no userId specified, only show public notes
+        if not user_id and note.get("isPublic", True) is False:
+            continue
         if user_id and note.get("userId") != user_id:
             continue
         if stack_id and note.get("stackId") != stack_id:
@@ -660,12 +676,60 @@ def get_user_profile(user_id):
     return jsonify(payload)
 
 
+@app.route("/api/users/<user_id>", methods=["PATCH"])
+def update_user_profile(user_id):
+    if not user_id:
+        return jsonify({"error": "Missing user id"}), 400
+
+    data = request.get_json() or {}
+    allowed_keys = {"username", "avatar", "bio"}
+    updates = {key: data.get(key) for key in allowed_keys if key in data}
+
+    if not updates:
+        return jsonify({"error": "No valid fields provided"}), 400
+
+    user_ref = database_ref.child("users").child(user_id)
+    existing = user_ref.get()
+
+    if not existing:
+        # Create user if it doesn't exist
+        user_ref.set({
+            "username": updates.get("username", ""),
+            "avatar": updates.get("avatar", ""),
+            "bio": updates.get("bio", ""),
+        })
+    else:
+        user_ref.update(updates)
+
+    latest = user_ref.get() or {}
+    followers = latest.get("followers") or {}
+    following = latest.get("following") or {}
+    stacks = latest.get("stacks") or {}
+    stubs = latest.get("stubs") or {}
+    notes = latest.get("notes") or {}
+    collections = latest.get("collections") or {}
+
+    payload = {
+        "id": user_id,
+        "username": latest.get("username") or "",
+        "avatar": latest.get("avatar") or "",
+        "bio": latest.get("bio") or "",
+        "followers": len(followers),
+        "following": len(following),
+        "stats": {
+            "stacks": len(stacks),
+            "stubs": len(stubs),
+            "collections": len(collections),
+            "notes": len(notes),
+        },
+    }
+
+    return jsonify({"message": "Profile updated", "user": payload})
+
+
 @app.route("/api/search/profiles", methods=["GET"])
 def search_profiles():
-    query = normalize_query(request.args.get("query"))
-    if not query:
-        return jsonify({"results": []})
-
+    query = normalize_query(request.args.get("query") or "")
     users = database_ref.child("users").get() or {}
     results = []
 
@@ -673,7 +737,9 @@ def search_profiles():
         username = (user.get("username") or "").strip()
         if not username:
             continue
-        if query not in username.lower():
+        
+        # If query is empty, include all users. Otherwise filter by username.
+        if query and query not in username.lower():
             continue
 
         followers = user.get("followers") or {}
@@ -682,6 +748,8 @@ def search_profiles():
         results.append({
             "id": user_id,
             "username": username,
+            "bio": user.get("bio") or "",
+            "avatar": user.get("avatar") or "",
             "followers": len(followers),
             "following": len(following),
         })
@@ -764,6 +832,144 @@ def search_notes():
         })
 
     return jsonify({"results": results})
+
+
+# --------------------------------------
+# AUTHENTICATION ENDPOINTS
+# --------------------------------------
+def verify_firebase_token(token):
+    """Verify Firebase ID token and return user info"""
+    try:
+        decoded_token = auth.verify_id_token(token)
+        return decoded_token
+    except Exception as e:
+        return None
+
+
+@app.route("/api/auth/verify", methods=["POST"])
+def verify_token():
+    data = request.get_json() or {}
+    token = data.get("token")
+    
+    if not token:
+        return jsonify({"error": "Missing token"}), 400
+    
+    decoded = verify_firebase_token(token)
+    if not decoded:
+        return jsonify({"error": "Invalid token"}), 401
+    
+    uid = decoded.get("uid")
+    user = database_ref.child("users").child(uid).get()
+    
+    if not user:
+        # Create user record if it doesn't exist
+        user_data = {
+            "username": decoded.get("name") or "",
+            "email": decoded.get("email") or "",
+            "stacks": {},
+            "stubs": {},
+            "notes": {},
+            "collections": {},
+            "followers": {},
+            "following": {},
+        }
+        database_ref.child("users").child(uid).set(user_data)
+        user = user_data
+    
+    return jsonify({
+        "uid": uid,
+        "email": decoded.get("email"),
+        "username": user.get("username") or "",
+    })
+
+
+# --------------------------------------
+# FOLLOW/UNFOLLOW ENDPOINTS
+# --------------------------------------
+@app.route("/api/users/<user_id>/follow", methods=["POST"])
+def follow_user(user_id):
+    """Follow a user"""
+    data = request.get_json() or {}
+    token = data.get("token")
+    
+    if not token:
+        return jsonify({"error": "Authentication required"}), 401
+    
+    decoded = verify_firebase_token(token)
+    if not decoded:
+        return jsonify({"error": "Invalid token"}), 401
+    
+    current_user_id = decoded.get("uid")
+    
+    if current_user_id == user_id:
+        return jsonify({"error": "Cannot follow yourself"}), 400
+    
+    # Check if user exists
+    target_user = database_ref.child("users").child(user_id).get()
+    if not target_user:
+        return jsonify({"error": "User not found"}), 404
+    
+    # Add to following list
+    database_ref.child("users").child(current_user_id).child("following").child(user_id).set(True)
+    
+    # Add to target's followers list
+    database_ref.child("users").child(user_id).child("followers").child(current_user_id).set(True)
+    
+    return jsonify({"message": "User followed", "following": True})
+
+
+@app.route("/api/users/<user_id>/follow", methods=["DELETE"])
+def unfollow_user(user_id):
+    """Unfollow a user"""
+    data = request.get_json() or {}
+    token = data.get("token")
+    
+    if not token:
+        return jsonify({"error": "Authentication required"}), 401
+    
+    decoded = verify_firebase_token(token)
+    if not decoded:
+        return jsonify({"error": "Invalid token"}), 401
+    
+    current_user_id = decoded.get("uid")
+    
+    if current_user_id == user_id:
+        return jsonify({"error": "Cannot unfollow yourself"}), 400
+    
+    # Remove from following list
+    database_ref.child("users").child(current_user_id).child("following").child(user_id).delete()
+    
+    # Remove from target's followers list
+    database_ref.child("users").child(user_id).child("followers").child(current_user_id).delete()
+    
+    return jsonify({"message": "User unfollowed", "following": False})
+
+
+@app.route("/api/users/<user_id>/follow/status", methods=["GET"])
+def get_follow_status(user_id):
+    """Check if current user is following target user"""
+    token = request.args.get("token")
+    
+    if not token:
+        return jsonify({"following": False})
+    
+    decoded = verify_firebase_token(token)
+    if not decoded:
+        return jsonify({"following": False})
+    
+    current_user_id = decoded.get("uid")
+    
+    if current_user_id == user_id:
+        return jsonify({"following": False, "isOwnProfile": True})
+    
+    user = database_ref.child("users").child(current_user_id).get()
+    if not user:
+        return jsonify({"following": False})
+    
+    following = user.get("following") or {}
+    is_following = user_id in following
+    
+    return jsonify({"following": is_following, "isOwnProfile": False})
 
 
 if __name__ == "__main__":
