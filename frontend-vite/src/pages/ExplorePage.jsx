@@ -1,5 +1,5 @@
 // src/pages/ExplorePage.jsx
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 const RECENTLY_ADDED = [
@@ -22,7 +22,7 @@ const RECENTLY_ADDED = [
     title: "Do the Right Thing",
     creator: "Added by @sloane",
     cover:
-      "https://m.media-amazon.com/images/I/61sKp2N5JaL._AC_UF894,1000_QL80_.jpg",
+      "http://m.media-amazon.com/images/M/MV5BODA2MjU1NTI1MV5BMl5BanBnXkFtZTgwOTU4ODIwMjE@._V1_.jpg",
   },
   {
     id: "ra-4",
@@ -47,7 +47,7 @@ const RECENTLY_ADDED = [
   },
 ];
 
-const RECENT_NOTES = [
+const FALLBACK_RECENT_NOTES = [
   {
     id: "note-1",
     title: "Recent trip to MoMA",
@@ -74,7 +74,93 @@ const RECENT_NOTES = [
   },
 ];
 
+const DEFAULT_USER_ID = "user_001";
+
+function formatRelativeLabel(timestamp) {
+  if (!timestamp) return "";
+  const nowSeconds = Date.now() / 1000;
+  const diff = Math.max(0, nowSeconds - timestamp);
+  if (diff < 3600) {
+    const minutes = Math.max(1, Math.floor(diff / 60));
+    return `${minutes}m ago`;
+  }
+  if (diff < 86400) {
+    const hours = Math.max(1, Math.floor(diff / 3600));
+    return `${hours}h ago`;
+  }
+  const days = Math.max(1, Math.floor(diff / 86400));
+  return `${days}d ago`;
+}
+
 export default function ExplorePage() {
+  const [recentNotes, setRecentNotes] = useState(FALLBACK_RECENT_NOTES);
+  const [notesLoading, setNotesLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    setNotesLoading(true);
+    fetch("http://127.0.0.1:5000/api/notes")
+      .then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || "Failed to load notes");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (!isMounted) return;
+        const normalized = (data.results || [])
+          .filter((note) => note?.isPublic !== false)
+          .sort(
+            (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+          )
+          .slice(0, 5)
+          .map((note) => {
+            const title = note.title || "Untitled note";
+            const [fallbackTitle, ...rest] = (note.content || "").split("\n");
+            const body = note.body || rest.join("\n").trim();
+            const author =
+              note.username || note.userId
+                ? `@${(note.username || note.userId || "unknown")
+                    .toString()
+                    .replace("@", "")}`
+                : "Unknown";
+            const userId = note.userId;
+            const path =
+              userId && userId !== DEFAULT_USER_ID
+                ? `/profiles/${userId}/notes/${note.id}`
+                : `/profile/notes/${note.id}`;
+
+            return {
+              id: note.id,
+              title: title || fallbackTitle || "Untitled note",
+              body:
+                body ||
+                rest.join("\n").trim() ||
+                "Tap to read the full note.",
+              author,
+              mediaType: (note.mediaType || "note").toLowerCase(),
+              createdAt: formatRelativeLabel(note.createdAt),
+              link: path,
+            };
+          });
+
+        if (normalized.length) {
+          setRecentNotes(normalized);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load recent notes:", err);
+      })
+      .finally(() => {
+        if (isMounted) setNotesLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <section className="px-8 py-10 space-y-10">
       <header className="space-y-2">
@@ -138,28 +224,37 @@ export default function ExplorePage() {
         </div>
 
         <div className="space-y-4">
-          {RECENT_NOTES.map((note) => (
-            <article
-              key={note.id}
-              className="rounded-3xl bg-[#AEC7E0]/40 border border-[#e0edf7] shadow-sm p-6 text-[#1F2A37]"
-            >
-              <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-[#1f2a37]/70">
-                    {note.mediaType}
-                  </p>
-                  <h3 className="text-xl font-semibold leading-tight">
-                    {note.title}
-                  </h3>
+          {notesLoading && (
+            <div className="rounded-3xl border border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-500">
+              Loading recent notes…
+            </div>
+          )}
+          {!notesLoading &&
+            recentNotes.map((note) => (
+              <Link
+                key={note.id}
+                to={note.link}
+                className="block rounded-3xl bg-[#AEC7E0]/40 border border-[#e0edf7] shadow-sm p-6 text-[#1F2A37] transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#CAC444]/60"
+              >
+                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#1f2a37]/70">
+                      {note.mediaType}
+                    </p>
+                    <h3 className="text-xl font-semibold leading-tight">
+                      {note.title}
+                    </h3>
+                  </div>
+                  <div className="text-xs text-[#1f2a37]/70 text-right">
+                    <p>{note.author}</p>
+                    <p>{note.createdAt}</p>
+                  </div>
                 </div>
-                <div className="text-xs text-[#1f2a37]/70 text-right">
-                  <p>{note.author}</p>
-                  <p>{note.createdAt}</p>
-                </div>
-              </div>
-              <p className="mt-3 text-sm leading-relaxed">{note.body}</p>
-            </article>
-          ))}
+                <p className="mt-3 text-sm leading-relaxed line-clamp-3">
+                  {note.body}
+                </p>
+              </Link>
+            ))}
         </div>
       </section>
     </section>
