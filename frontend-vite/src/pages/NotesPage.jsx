@@ -3,50 +3,62 @@ import { useNavigate } from "react-router-dom";
 import AddNoteModal from "../components/AddNoteModal";
 import FilterBar from "../components/FilterBar";
 
-const USER_ID = "user_001";
+const DEFAULT_USER_ID = "user_001";
+const DEFAULT_PATH_BUILDER = (subPath = "") =>
+  `/profile/${subPath}`.replace(/\/+$/, "") || "/profile";
 
-export default function NotesPage() {
+export default function NotesPage({
+  userId = DEFAULT_USER_ID,
+  allowCreate = true,
+  buildProfilePath = DEFAULT_PATH_BUILDER,
+}) {
   const [notes, setNotes] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [sortBy, setSortBy] = useState("default");
   const navigate = useNavigate();
 
-  const refreshNotes = async () => {
+  const refreshNotes = useCallback(async () => {
     try {
-      const res = await fetch(`http://127.0.0.1:5000/api/notes?userId=${USER_ID}`);
+      const res = await fetch(
+        `http://127.0.0.1:5000/api/notes?userId=${userId}`
+      );
       const data = await res.json();
       const formatted =
-        (data.results || []).map((note) => ({
-          id: note.id,
-          content: note.content || "",
-          createdAt: note.createdAt ? new Date(note.createdAt * 1000) : new Date(),
-          stackId: note.stackId || null,
-          stubId: note.stubId || null,
-          mediaTitle: note.mediaTitle || "",
-          mediaType: note.mediaType || "",
-          coverUrl: note.coverUrl || note.thumbnail || "",
-        })) ?? [];
+        (data.results || []).map((note) => {
+          const createdAt = note.createdAt
+            ? new Date(note.createdAt * 1000)
+            : new Date();
+          let resolvedTitle = (note.title || "").trim();
+          let resolvedBody = (note.body || "").trim();
+          if (!resolvedTitle && !resolvedBody) {
+            const [firstLine, ...rest] = (note.content || "").split("\n");
+            resolvedTitle = firstLine || "Untitled note";
+            resolvedBody = rest.join("\n").trim();
+          }
+          return {
+            id: note.id,
+            content: note.content || "",
+            createdAt,
+            stackId: note.stackId || null,
+            stubId: note.stubId || null,
+            mediaTitle: note.mediaTitle || "",
+            mediaType: note.mediaType || "",
+            coverUrl: note.coverUrl || note.thumbnail || "",
+            title: resolvedTitle || "Untitled note",
+            body: resolvedBody,
+          };
+        }) ?? [];
       setNotes(formatted);
     } catch (err) {
       console.error("Failed to load notes:", err);
     }
-  };
+  }, [userId]);
 
   useEffect(() => {
     refreshNotes();
-  }, []);
+  }, [refreshNotes]);
 
-  const formattedNotes = useMemo(() => {
-    return notes.map((note) => {
-      const [title, ...rest] = note.content.split("\n");
-      const body = rest.join("\n").trim();
-      return {
-        ...note,
-        title: title || "Untitled note",
-        body,
-      };
-    });
-  }, [notes]);
+  const formattedNotes = useMemo(() => notes, [notes]);
 
   const sortedNotes = useMemo(() => {
     if (sortBy === "title") {
@@ -68,9 +80,9 @@ export default function NotesPage() {
 
   const handleNoteClick = useCallback(
     (note) => {
-      navigate(`/profile/notes/${note.id}`);
+      navigate(buildProfilePath(`notes/${note.id}`));
     },
-    [navigate]
+    [navigate, buildProfilePath]
   );
 
   const handleCloseModal = useCallback(() => {
@@ -89,7 +101,7 @@ export default function NotesPage() {
         onToggleFilter={() => {}}
         sortBy={sortBy}
         onSortChange={setSortBy}
-        openModal={handleAddNote}
+        openModal={allowCreate ? handleAddNote : undefined}
         visibleFilters={[]}
         heartedOnlyActive={undefined}
         onHeartedToggle={undefined}
@@ -129,23 +141,26 @@ export default function NotesPage() {
             </div>
 
             {note.coverUrl && (
-              <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-white/40 bg-white/40 self-start md:self-center">
-                <img
-                  src={note.coverUrl}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
+              <div className="flex-shrink-0 self-stretch md:self-center md:ml-auto">
+                <div className="w-24 h-24 rounded-2xl border border-white/50 bg-white/40 flex items-center justify-center overflow-hidden">
+                  <img
+                    src={note.coverUrl}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               </div>
             )}
           </article>
         ))}
       </div>
 
-      {showModal && (
+      {showModal && allowCreate && (
         <AddNoteModal
           initialNote={null}
           onClose={handleCloseModal}
           onSave={handleModalSave}
+          userId={userId}
         />
       )}
     </section>

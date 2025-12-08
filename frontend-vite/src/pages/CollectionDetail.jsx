@@ -5,15 +5,20 @@ import { X } from "lucide-react";
 
 const FALLBACK_IMG =
   "https://via.placeholder.com/400x400/DDD7C8/8B7E6A?text=No+Image";
+const DEFAULT_PATH_BUILDER = (subPath = "") =>
+  `/profile/${subPath}`.replace(/\/+$/, "") || "/profile";
 
 export default function CollectionDetail({
   collections,
   onRemoveItem,
   onEditCollection,
   onDeleteCollection,
+  isOwnProfile = true,
+  buildProfilePath = DEFAULT_PATH_BUILDER,
 }) {
   const { collectionId } = useParams();
   const navigate = useNavigate();
+  const collectionsPath = buildProfilePath("collections");
 
   const collection = collections.find(
     (entry) => entry.id?.toString() === collectionId
@@ -23,7 +28,7 @@ export default function CollectionDetail({
     return (
       <div className="px-8 py-10 space-y-4">
         <p className="text-gray-600">Collection not found.</p>
-        <Button onClick={() => navigate("/profile/collections")}>
+        <Button onClick={() => navigate(collectionsPath)}>
           Back to collections
         </Button>
       </div>
@@ -40,14 +45,14 @@ export default function CollectionDetail({
     );
     if (!confirm) return;
     onDeleteCollection?.(collection.id);
-    navigate("/profile/collections");
+    navigate(collectionsPath);
   };
 
   return (
     <div className="px-8 py-8 space-y-8">
       <button
         type="button"
-        onClick={() => navigate("/profile/collections")}
+        onClick={() => navigate(collectionsPath)}
         className="text-sm text-gray-600 hover:text-black"
       >
         ← Back to collections
@@ -75,22 +80,24 @@ export default function CollectionDetail({
             )}
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Button
-              variant="outline"
-              className="rounded-full"
-              onClick={() => onEditCollection?.(collection)}
-            >
-              Edit collection
-            </Button>
-            <Button
-              variant="destructive"
-              className="rounded-full"
-              onClick={handleDeleteCollection}
-            >
-              Delete collection
-            </Button>
-          </div>
+          {isOwnProfile && (
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                className="rounded-full"
+                onClick={() => onEditCollection?.(collection)}
+              >
+                Edit collection
+              </Button>
+              <Button
+                variant="destructive"
+                className="rounded-full"
+                onClick={handleDeleteCollection}
+              >
+                Delete collection
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -127,7 +134,7 @@ export default function CollectionDetail({
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
-            No items yet. Edit this collection to add some.
+            No items yet.
           </div>
         )}
       </div>

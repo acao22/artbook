@@ -174,31 +174,33 @@ export default function FilterBar({
               </DropdownMenuItem>
 
               <DropdownMenuItem onClick={() => onSortChange("recent")}>
-                Most Recent
+                Oldest First
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
 
         {/* ADD ITEM BUTTON */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              onClick={openModal}
-              className="
-                rounded-full bg-[#CAC444] text-black shadow-md w-10 h-10
-                flex items-center justify-center
+        {typeof openModal === "function" && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={openModal}
+                className="
+                  rounded-full bg-[#CAC444] text-black shadow-md w-10 h-10
+                  flex items-center justify-center
 
-                hover:bg-[#b5b03f] hover:shadow-lg hover:-translate-y-[1px]
-                active:scale-95 transition-all duration-200
-              "
-            >
-              <Plus size={22} />
-            </Button>
-          </TooltipTrigger>
+                  hover:bg-[#b5b03f] hover:shadow-lg hover:-translate-y-[1px]
+                  active:scale-95 transition-all duration-200
+                "
+              >
+                <Plus size={22} />
+              </Button>
+            </TooltipTrigger>
 
-          <TooltipContent>Add new item</TooltipContent>
-        </Tooltip>
+            <TooltipContent>Add new item</TooltipContent>
+          </Tooltip>
+        )}
       </div>
     </div>
   );

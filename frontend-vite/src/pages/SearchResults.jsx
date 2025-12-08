@@ -76,16 +76,27 @@ export default function SearchResults() {
     </div>
   );
 
+  const handleProfileNavigate = (profileId) => {
+    if (!profileId) return;
+    navigate(`/profiles/${encodeURIComponent(profileId)}/stack`);
+  };
+
   const renderProfiles = () => (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {state.results.map((profile) => (
-        <div key={profile.id} className="rounded-3xl border border-[#eadfcc] bg-[#AEC7E0]/40 p-5 space-y-2 shadow-sm">
+        <button
+          key={profile.id}
+          type="button"
+          onClick={() => handleProfileNavigate(profile.id)}
+          className="text-left rounded-3xl border border-[#eadfcc] bg-[#AEC7E0]/40 p-5 space-y-2 shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#CAC444]/60"
+        >
           <p className="text-lg font-semibold text-gray-900">@{profile.username}</p>
           <div className="text-sm text-gray-600 flex gap-4">
             <span>{profile.followers} followers</span>
             <span>{profile.following} following</span>
           </div>
-        </div>
+          <p className="text-xs text-gray-500">View profile →</p>
+        </button>
       ))}
     </div>
   );

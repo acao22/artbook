@@ -23,7 +23,7 @@ export function ProfileMenu() {
       <DropdownMenuContent
         align="end"
         className="
-          w-40 bg-popover text-popover-foreground 
+          w-40 bg-[#FBF5ED] text-popover-foreground 
           rounded-md border shadow-md p-1
           data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95
           data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95

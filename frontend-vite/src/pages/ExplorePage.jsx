@@ -22,7 +22,7 @@ const RECENTLY_ADDED = [
     title: "Do the Right Thing",
     creator: "Added by @sloane",
     cover:
-      "http://m.media-amazon.com/images/M/MV5BODA2MjU1NTI1MV5BMl5BanBnXkFtZTgwOTU4ODIwMjE@._V1_.jpg",
+      "https://m.media-amazon.com/images/I/61sKp2N5JaL._AC_UF894,1000_QL80_.jpg",
   },
   {
     id: "ra-4",

@@ -13,6 +13,8 @@ import { ChevronDown } from "lucide-react";
 
 import { Separator } from "@/components/ui/separator";
 
+const DEFAULT_USER_ID = "user_001";
+
 function normalizeResult(category, raw, idx) {
   const lower = category.toLowerCase();
   const fallbackId =
@@ -96,7 +98,7 @@ async function searchExternal(category, query) {
   return rawResults.map((item, idx) => normalizeResult(category, item, idx));
 }
 
-function AddModal({ onClose, onSave }) {
+function AddModal({ onClose, onSave, userId = DEFAULT_USER_ID }) {
   const [category, setCategory] = useState("Music");
   const [hearted, setHearted] = useState(false);
 
@@ -107,7 +109,8 @@ function AddModal({ onClose, onSave }) {
 
   const [titleOverride, setTitleOverride] = useState("");
   const [notesType, setNotesType] = useState("New");
-  const [noteContent, setNoteContent] = useState("");
+  const [noteTitle, setNoteTitle] = useState("");
+  const [noteBody, setNoteBody] = useState("");
   const [existingNotes, setExistingNotes] = useState([]);
   const [notesLoading, setNotesLoading] = useState(false);
   const [selectedNoteId, setSelectedNoteId] = useState(null);
@@ -128,18 +131,20 @@ function AddModal({ onClose, onSave }) {
   useEffect(() => {
     if (notesType !== "From Existing") {
       setSelectedNoteId(null);
-      if (notesType !== "New") {
-        setNoteContent("");
-      }
+    }
+    if (notesType !== "New") {
+      setNoteTitle("");
+      setNoteBody("");
+    }
+    if (notesType !== "From Existing") {
       return;
     }
-
     let isMounted = true;
     const fetchNotes = async () => {
       try {
         setNotesLoading(true);
         const res = await fetch(
-          "http://127.0.0.1:5000/api/notes?userId=user_001"
+          `http://127.0.0.1:5000/api/notes?userId=${userId}`
         );
         if (!res.ok) {
           throw new Error(`Failed to load notes (${res.status})`);
@@ -164,7 +169,7 @@ function AddModal({ onClose, onSave }) {
     return () => {
       isMounted = false;
     };
-  }, [notesType]);
+  }, [notesType, userId]);
 
   // HANDLERS
 
@@ -218,7 +223,7 @@ function AddModal({ onClose, onSave }) {
     }
 
     const payload = {
-      userId: "user_001",
+      userId,
       mediaType,
       externalId: selectedItem?.id || null,
       title,
@@ -244,17 +249,20 @@ function AddModal({ onClose, onSave }) {
 
       const stackId = stackData.id;
 
-      if (notesType === "New" && noteContent.trim()) {
-        const noteTitle = title ? `Notes on ${title}` : "Notes on this item";
-        const noteBody = noteContent.trim();
+      if (notesType === "New" && (noteTitle.trim() || noteBody.trim())) {
+        const fallbackNoteTitle =
+          title ? `Notes on ${title}` : "Notes on this item";
+        const payloadTitle = noteTitle.trim() || fallbackNoteTitle;
+        const payloadBody = noteBody.trim();
+
         await fetch("http://127.0.0.1:5000/api/notes", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId: "user_001",
+            userId,
             stackId,
-            title: noteTitle,
-            body: noteBody,
+            title: payloadTitle,
+            body: payloadBody,
             isPublic: true,
           }),
         });
@@ -303,11 +311,6 @@ function AddModal({ onClose, onSave }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-800">Add to stack</h2>
-            <p className="text-xs text-gray-500 mt-1">
-              {isManualCategory
-                ? "Upload an image or describe anything that doesn't fit the other categories."
-                : `Search and select a ${category.toLowerCase()} from an external source, then add your own note.`}
-            </p>
           </div>
 
           <Button
@@ -517,12 +520,20 @@ function AddModal({ onClose, onSave }) {
           </div>
 
           {notesType === "New" && (
-            <textarea
-              className="w-full min-h-[90px] rounded-lg border border-[#ddd] bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#AEC7E0]/70 focus:border-transparent"
-              placeholder="What did this make you feel? Any favorite lines, scenes, or moments?"
-              value={noteContent}
-              onChange={(e) => setNoteContent(e.target.value)}
-            />
+            <div className="space-y-2">
+              <Input
+                value={noteTitle}
+                onChange={(e) => setNoteTitle(e.target.value)}
+                placeholder="Note title"
+                className="rounded-full border border-[#d8cfbf] bg-white"
+              />
+              <textarea
+                className="w-full min-h-[90px] rounded-lg border border-[#ddd] bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#AEC7E0]/70 focus:border-transparent"
+                placeholder="What did this make you feel? Any favorite lines, scenes, or moments?"
+                value={noteBody}
+                onChange={(e) => setNoteBody(e.target.value)}
+              />
+            </div>
           )}
 
           {notesType === "From Existing" && (
@@ -535,24 +546,33 @@ function AddModal({ onClose, onSave }) {
                     No notes found. Create one first from the Notes page.
                   </div>
                 ) : (
-                  existingNotes.map((note) => (
-                    <button
-                      type="button"
-                      key={note.id}
-                      onClick={() => setSelectedNoteId(note.id)}
-                      className={`w-full text-left px-3 py-2 text-sm transition ${
-                        selectedNoteId === note.id
-                          ? "bg-[#e9e2cf] text-gray-900"
-                          : "hover:bg-[#f4efe4] text-gray-700"
-                      }`}
-                    >
-                      {note.content?.length > 0
-                        ? `${note.content.slice(0, 120)}${
-                            note.content.length > 120 ? "..." : ""
-                          }`
-                        : "Untitled note"}
-                    </button>
-                  ))
+                  existingNotes.map((note) => {
+                    const previewTitle = (note.title || "").trim();
+                    const previewBody = (note.body || note.content || "")
+                      .trim()
+                      .slice(0, 160);
+                    return (
+                      <button
+                        type="button"
+                        key={note.id}
+                        onClick={() => setSelectedNoteId(note.id)}
+                        className={`w-full text-left px-3 py-2 text-sm transition ${
+                          selectedNoteId === note.id
+                            ? "bg-[#e9e2cf] text-gray-900"
+                            : "hover:bg-[#f4efe4] text-gray-700"
+                        }`}
+                      >
+                        <p className="font-semibold">
+                          {previewTitle || "Untitled note"}
+                        </p>
+                        {previewBody && (
+                          <p className="text-xs text-gray-500 line-clamp-2">
+                            {previewBody}
+                          </p>
+                        )}
+                      </button>
+                    );
+                  })
                 )}
               </div>
             </div>

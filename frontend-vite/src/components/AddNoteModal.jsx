@@ -4,8 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X } from "lucide-react";
 
-const USER_ID = "user_001";
-export default function AddNoteModal({ onClose, onSave, initialNote = null }) {
+const DEFAULT_USER_ID = "user_001";
+export default function AddNoteModal({
+  onClose,
+  onSave,
+  initialNote = null,
+  userId = DEFAULT_USER_ID,
+}) {
   const [headline, setHeadline] = useState(initialNote?.title || "");
   const [body, setBody] = useState(initialNote?.body || "");
   const [linkMode, setLinkMode] = useState(() => {
@@ -53,8 +58,8 @@ export default function AddNoteModal({ onClose, onSave, initialNote = null }) {
     async function loadItems() {
       try {
         const [stackRes, stubRes] = await Promise.all([
-          fetch(`http://127.0.0.1:5000/api/stacks?userId=${USER_ID}`),
-          fetch(`http://127.0.0.1:5000/api/stubs?userId=${USER_ID}`),
+          fetch(`http://127.0.0.1:5000/api/stacks?userId=${userId}`),
+          fetch(`http://127.0.0.1:5000/api/stubs?userId=${userId}`),
         ]);
         if (stackRes.ok) {
           const data = await stackRes.json();
@@ -83,7 +88,7 @@ export default function AddNoteModal({ onClose, onSave, initialNote = null }) {
       }
     }
     loadItems();
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     setLinkSearchTerm("");
@@ -117,13 +122,13 @@ export default function AddNoteModal({ onClose, onSave, initialNote = null }) {
   };
 
   const handleSave = async () => {
-    if (!headline.trim()) {
-      alert("Please add a title for this note.");
+    const cleanTitle = headline.trim();
+    const cleanBody = body.trim();
+    if (!cleanTitle && !cleanBody) {
+      alert("Please add a title or some content for this note.");
       return;
     }
-    const combined = [headline.trim(), body.trim()]
-      .filter(Boolean)
-      .join("\n");
+    const combined = [cleanTitle, cleanBody].filter(Boolean).join("\n");
 
     const isStackLink = linkMode === "stack" && selectedLinkId;
     const isStubLink = linkMode === "stub" && selectedLinkId;
@@ -149,6 +154,8 @@ export default function AddNoteModal({ onClose, onSave, initialNote = null }) {
 
     const payload = {
       content: combined,
+      title: cleanTitle,
+      body: cleanBody,
       stackId,
       stubId,
       mediaTitle,
@@ -158,7 +165,7 @@ export default function AddNoteModal({ onClose, onSave, initialNote = null }) {
     };
 
     if (!isEditing) {
-      payload.userId = USER_ID;
+      payload.userId = userId;
     }
 
     try {

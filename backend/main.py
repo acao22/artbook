@@ -11,7 +11,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 SPOTIFY_CLIENT_ID = "fa717cc062404cdd81374a4145725899"
-SPOTIFY_CLIENT_SECRET = "413c8edf5fbd41ce83dbbd3464d5fdb1"
+SPOTIFY_CLIENT_SECRET = ""
 TMDB_API_KEY = "1f655943c2cbd205457f62599e088978"
 
 def build_note_content(title: str | None, body: str | None) -> str:
@@ -145,12 +145,20 @@ def create_note():
     user_id = data.get("userId")
     stack_id = data.get("stackId")
     stub_id = data.get("stubId")
+    raw_title = data.get("title") or ""
+    raw_body = data.get("body") or ""
+    title = raw_title.strip()
+    body = raw_body.strip()
     content = (data.get("content") or "").strip()
     if not content:
-        content = build_note_content(data.get("title"), data.get("body"))
+        content = build_note_content(title, body)
+
+    if not title and not body and content:
+        title, body = split_note_content(content)
+
     is_public = data.get("isPublic", True)
 
-    if not user_id or not content:
+    if not user_id or not (title or body or content):
         return jsonify({"error": "Missing required fields"}), 400
 
     note_ref = database_ref.child("notes").push()
@@ -159,6 +167,8 @@ def create_note():
         "stackId": stack_id,
         "stubId": stub_id,
         "content": content,
+        "title": title,
+        "body": body,
         "isPublic": is_public,
         "createdAt": int(time.time())
     })
@@ -189,7 +199,14 @@ def get_notes():
 @app.route("/api/notes/<note_id>", methods=["PATCH"])
 def update_note(note_id):
     data = request.get_json() or {}
-    allowed_keys = {"stackId", "stubId", "isPublic"}
+    allowed_keys = {
+        "stackId",
+        "stubId",
+        "isPublic",
+        "mediaTitle",
+        "mediaType",
+        "coverUrl",
+    }
     updates = {key: data.get(key) for key in allowed_keys if key in data}
     content_override = (data.get("content") or "").strip()
     title_override = data.get("title")
@@ -201,13 +218,29 @@ def update_note(note_id):
     if not existing:
         return jsonify({"error": "Note not found"}), 404
 
+    current_title = existing.get("title")
+    current_body = existing.get("body")
+    if not current_title and not current_body:
+        split_title, split_body = split_note_content(existing.get("content"))
+        current_title = current_title or split_title
+        current_body = current_body or split_body
+
+    if title_override is not None:
+        updates["title"] = (title_override or "").strip()
+    if body_override is not None:
+        updates["body"] = (body_override or "").strip()
+
+    next_title = updates.get("title", current_title or "")
+    next_body = updates.get("body", current_body or "")
+
     if content_override:
         updates["content"] = content_override
-    elif title_override is not None or body_override is not None:
-        current_title, current_body = split_note_content(existing.get("content"))
-        new_title = title_override if title_override is not None else current_title
-        new_body = body_override if body_override is not None else current_body
-        updates["content"] = build_note_content(new_title, new_body)
+        if "title" not in updates and "body" not in updates:
+            derived_title, derived_body = split_note_content(content_override)
+            updates.setdefault("title", derived_title)
+            updates.setdefault("body", derived_body)
+    elif "title" in updates or "body" in updates:
+        updates["content"] = build_note_content(next_title, next_body)
 
     if not updates:
         return jsonify({"error": "No valid fields provided"}), 400
@@ -502,6 +535,40 @@ def normalize_query(value):
     return (value or "").strip().lower()
 
 
+@app.route("/api/users/<user_id>", methods=["GET"])
+def get_user_profile(user_id):
+    if not user_id:
+        return jsonify({"error": "Missing user id"}), 400
+
+    user = database_ref.child("users").child(user_id).get()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    followers = user.get("followers") or {}
+    following = user.get("following") or {}
+    stacks = user.get("stacks") or {}
+    stubs = user.get("stubs") or {}
+    notes = user.get("notes") or {}
+    collections = user.get("collections") or {}
+
+    payload = {
+        "id": user_id,
+        "username": user.get("username") or "",
+        "avatar": user.get("avatar") or "",
+        "bio": user.get("bio") or "",
+        "followers": len(followers),
+        "following": len(following),
+        "stats": {
+            "stacks": len(stacks),
+            "stubs": len(stubs),
+            "collections": len(collections),
+            "notes": len(notes),
+        },
+    }
+
+    return jsonify(payload)
+
+
 @app.route("/api/search/profiles", methods=["GET"])
 def search_profiles():
     query = normalize_query(request.args.get("query"))
@@ -580,13 +647,16 @@ def search_notes():
         if note.get("isPublic", True) is False:
             continue
 
+        title = (note.get("title") or "").strip()
+        body = (note.get("body") or "").strip()
         content = (note.get("content") or "").strip()
-        if query not in content.lower():
+        if not title and not body:
+            title, body = split_note_content(content)
+
+        searchable = f"{title}\n{body}".strip().lower()
+        if query not in searchable:
             continue
 
-        lines = content.split("\n")
-        title = lines[0] if lines else "Untitled note"
-        body = "\n".join(lines[1:]).strip()
         owner_id = note.get("userId")
         owner_username = ""
         if owner_id and owner_id in users:
@@ -599,6 +669,7 @@ def search_notes():
             "userId": owner_id,
             "username": owner_username,
             "createdAt": note.get("createdAt"),
+            "coverUrl": note.get("coverUrl") or note.get("thumbnail") or "",
         })
 
     return jsonify({"results": results})

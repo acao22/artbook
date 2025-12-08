@@ -1,11 +1,18 @@
 import React, { useState, useRef, useEffect } from "react";
 import { X, Heart, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+const DEFAULT_USER_ID = "user_001";
 
 const CATEGORY_OPTIONS = ["Concerts", "Museums", "Theatre", "Other"];
 const NOTE_OPTIONS = ["New", "From Existing", "None"];
 
-export default function AddModalStubs({ onClose, onSave }) {
+export default function AddModalStubs({
+  onClose,
+  onSave,
+  userId = DEFAULT_USER_ID,
+}) {
   const [category, setCategory] = useState("Other");
   const [notesType, setNotesType] = useState("New");
   const [hearted, setHearted] = useState(false);
@@ -16,12 +23,19 @@ export default function AddModalStubs({ onClose, onSave }) {
 
   const [existingNotes, setExistingNotes] = useState([]);
   const [selectedNoteId, setSelectedNoteId] = useState(null);
-  const [noteContent, setNoteContent] = useState("");
+  const [noteTitle, setNoteTitle] = useState("");
+  const [noteBody, setNoteBody] = useState("");
   const [notesLoading, setNotesLoading] = useState(false);
 
   useEffect(() => {
     if (notesType !== "From Existing") {
       setSelectedNoteId(null);
+    }
+    if (notesType !== "New") {
+      setNoteTitle("");
+      setNoteBody("");
+    }
+    if (notesType !== "From Existing") {
       return;
     }
 
@@ -30,7 +44,9 @@ export default function AddModalStubs({ onClose, onSave }) {
     const fetchExistingNotes = async () => {
       try {
         setNotesLoading(true);
-        const res = await fetch("http://127.0.0.1:5000/api/notes?userId=user_001");
+        const res = await fetch(
+          `http://127.0.0.1:5000/api/notes?userId=${userId}`
+        );
         if (!res.ok) throw new Error(`Failed to fetch notes (${res.status})`);
         const data = await res.json();
         if (isMounted) {
@@ -48,7 +64,7 @@ export default function AddModalStubs({ onClose, onSave }) {
     return () => {
       isMounted = false;
     };
-  }, [notesType]);
+  }, [notesType, userId]);
 
   const handleClickUploadBox = () => {
     fileInputRef.current?.click();
@@ -71,7 +87,7 @@ export default function AddModalStubs({ onClose, onSave }) {
     }
 
     const payload = {
-      userId: "user_001",
+      userId,
       mediaType: category.toLowerCase(),
       title,
       date: new Date().toISOString().slice(0, 10),
@@ -94,18 +110,18 @@ export default function AddModalStubs({ onClose, onSave }) {
 
       const stubId = data.id;
 
-      if (notesType === "New" && noteContent.trim()) {
-        const sanitizedTitle = title.split("\n")[0]?.trim() || "this experience";
-        const noteTitle = `Notes on ${sanitizedTitle}`;
-        const noteBody = noteContent.trim();
+      if (notesType === "New" && (noteTitle.trim() || noteBody.trim())) {
+        const baseLabel = title.split("\n")[0]?.trim() || "this experience";
+        const payloadTitle = noteTitle.trim() || `Notes on ${baseLabel}`;
+        const payloadBody = noteBody.trim();
         await fetch("http://127.0.0.1:5000/api/notes", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId: "user_001",
+            userId,
             stubId,
-            title: noteTitle,
-            body: noteBody,
+            title: payloadTitle,
+            body: payloadBody,
             isPublic: true,
           }),
         });
@@ -245,12 +261,20 @@ export default function AddModalStubs({ onClose, onSave }) {
           </div>
 
           {notesType === "New" && (
-            <textarea
-              className="w-full min-h-[90px] rounded-lg border border-[#ddd] bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#AEC7E0]/70 focus:border-transparent"
-              placeholder="Write your note..."
-              value={noteContent}
-              onChange={(e) => setNoteContent(e.target.value)}
-            />
+            <div className="space-y-2 w-full">
+              <Input
+                value={noteTitle}
+                onChange={(e) => setNoteTitle(e.target.value)}
+                placeholder="Note title"
+                className="rounded-full border border-[#d8cfbf] bg-white"
+              />
+              <textarea
+                className="w-full min-h-[90px] rounded-lg border border-[#ddd] bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#AEC7E0]/70 focus:border-transparent"
+                placeholder="Write your note..."
+                value={noteBody}
+                onChange={(e) => setNoteBody(e.target.value)}
+              />
+            </div>
           )}
 
           {notesType === "From Existing" && (
@@ -262,21 +286,34 @@ export default function AddModalStubs({ onClose, onSave }) {
                   No notes found. Visit the Notes page to create one first.
                 </div>
               ) : (
-                existingNotes.map((note) => (
-                  <button
-                    type="button"
-                    key={note.id}
-                    onClick={() => setSelectedNoteId(note.id)}
-                    className={`w-full text-left px-3 py-2 text-sm transition ${
-                      selectedNoteId === note.id
-                        ? "bg-[#e9e2cf] text-gray-900"
-                        : "hover:bg-[#f4efe4] text-gray-700"
-                    }`}
-                  >
-                    {note.content?.slice(0, 120)}
-                    {note.content && note.content.length > 120 ? "..." : ""}
-                  </button>
-                ))
+                existingNotes.map((note) => {
+                  const previewTitle = (note.title || "").trim();
+                  const previewBody = (note.body || note.content || "")
+                    .trim()
+                    .slice(0, 160);
+
+                  return (
+                    <button
+                      type="button"
+                      key={note.id}
+                      onClick={() => setSelectedNoteId(note.id)}
+                      className={`w-full text-left px-3 py-2 text-sm transition ${
+                        selectedNoteId === note.id
+                          ? "bg-[#e9e2cf] text-gray-900"
+                          : "hover:bg-[#f4efe4] text-gray-700"
+                      }`}
+                    >
+                      <p className="font-semibold">
+                        {previewTitle || "Untitled note"}
+                      </p>
+                      {previewBody && (
+                        <p className="text-xs text-gray-500 line-clamp-2">
+                          {previewBody}
+                        </p>
+                      )}
+                    </button>
+                  );
+                })
               )}
             </div>
           )}

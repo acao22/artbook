@@ -3,15 +3,22 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import AddNoteModal from "../components/AddNoteModal";
 
-const USER_ID = "user_001";
+const DEFAULT_USER_ID = "user_001";
+const DEFAULT_PATH_BUILDER = (subPath = "") =>
+  `/profile/${subPath}`.replace(/\/+$/, "") || "/profile";
 
 const normalizeNote = (raw) => {
   if (!raw) return null;
   const createdAt = raw.createdAt
     ? new Date(raw.createdAt * 1000)
     : new Date();
-  const [title, ...rest] = (raw.content || "").split("\n");
-  const body = rest.join("\n").trim();
+  let title = (raw.title || "").trim();
+  let body = (raw.body || "").trim();
+  if (!title && !body) {
+    const [firstLine, ...rest] = (raw.content || "").split("\n");
+    title = firstLine || "Untitled note";
+    body = rest.join("\n").trim();
+  }
   return {
     id: raw.id,
     stackId: raw.stackId || null,
@@ -25,7 +32,11 @@ const normalizeNote = (raw) => {
   };
 };
 
-export default function NoteDetail() {
+export default function NoteDetail({
+  userId = DEFAULT_USER_ID,
+  allowEdit = true,
+  buildProfilePath = DEFAULT_PATH_BUILDER,
+}) {
   const { noteId } = useParams();
   const navigate = useNavigate();
   const [note, setNote] = useState(null);
@@ -37,7 +48,7 @@ export default function NoteDetail() {
     setLoading(true);
     try {
       const res = await fetch(
-        `http://127.0.0.1:5000/api/notes?userId=${USER_ID}`
+        `http://127.0.0.1:5000/api/notes?userId=${userId}`
       );
       if (!res.ok) {
         console.error("Failed to load notes:", res.status);
@@ -53,7 +64,7 @@ export default function NoteDetail() {
     } finally {
       setLoading(false);
     }
-  }, [noteId]);
+  }, [noteId, userId]);
 
   useEffect(() => {
     loadNote();
@@ -69,7 +80,7 @@ export default function NoteDetail() {
     <div className="px-8 py-10 space-y-8">
       <button
         type="button"
-        onClick={() => navigate("/profile/notes")}
+        onClick={() => navigate(buildProfilePath("notes"))}
         className="text-sm text-gray-600 hover:text-black"
       >
         ← Back to notes
@@ -82,7 +93,7 @@ export default function NoteDetail() {
       ) : !note ? (
         <div className="rounded-3xl border border-dashed border-gray-300 px-6 py-16 text-center text-gray-500 space-y-4">
           <p>We couldn&apos;t find that note.</p>
-          <Button onClick={() => navigate("/profile/notes")}>
+          <Button onClick={() => navigate(buildProfilePath("notes"))}>
             Back to notes
           </Button>
         </div>
@@ -101,12 +112,14 @@ export default function NoteDetail() {
               </p>
             </div>
 
-            <Button
-              className="rounded-full bg-[#CAC444] text-black self-start"
-              onClick={() => setShowModal(true)}
-            >
-              Edit note
-            </Button>
+            {allowEdit && (
+              <Button
+                className="rounded-full bg-[#CAC444] text-black self-start"
+                onClick={() => setShowModal(true)}
+              >
+                Edit note
+              </Button>
+            )}
           </div>
 
           <div className="rounded-3xl bg-white shadow-sm border border-[#f1eadf] p-6">
@@ -123,7 +136,7 @@ export default function NoteDetail() {
         </div>
       )}
 
-      {showModal && note && (
+      {showModal && note && allowEdit && (
         <AddNoteModal
           initialNote={note}
           onClose={() => setShowModal(false)}
@@ -131,6 +144,7 @@ export default function NoteDetail() {
             setShowModal(false);
             loadNote();
           }}
+          userId={userId}
         />
       )}
     </div>
