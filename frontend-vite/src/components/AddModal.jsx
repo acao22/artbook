@@ -14,6 +14,28 @@ import { ChevronDown } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 const DEFAULT_USER_ID = "user_001";
+const CATEGORY_OPTIONS = ["Music", "Movies", "TV", "Books", "Other"];
+const TYPE_TO_CATEGORY = {
+  music: "Music",
+  movie: "Movies",
+  movies: "Movies",
+  tv: "TV",
+  book: "Books",
+  books: "Books",
+  other: "Other",
+};
+
+const normalizeCategoryFromType = (type) =>
+  TYPE_TO_CATEGORY[type?.toLowerCase?.()] || "Other";
+
+const normalizeTypeFromCategory = (category) => {
+  const lower = category?.toLowerCase?.() || "other";
+  if (lower === "music") return "music";
+  if (lower === "movies" || lower === "movie") return "movies";
+  if (lower === "tv") return "tv";
+  if (lower === "books" || lower === "book") return "books";
+  return "other";
+};
 
 function normalizeResult(category, raw, idx) {
   const lower = category.toLowerCase();
@@ -98,45 +120,83 @@ async function searchExternal(category, query) {
   return rawResults.map((item, idx) => normalizeResult(category, item, idx));
 }
 
-function AddModal({ onClose, onSave, userId = DEFAULT_USER_ID }) {
-  const [category, setCategory] = useState("Music");
-  const [hearted, setHearted] = useState(false);
+function AddModal({
+  onClose,
+  onSave,
+  userId = DEFAULT_USER_ID,
+  initialItem = null,
+  onDelete,
+}) {
+  const [category, setCategory] = useState(
+    () => normalizeCategoryFromType(initialItem?.type || initialItem?.mediaType) || "Music"
+  );
+  const [hearted, setHearted] = useState(Boolean(initialItem?.hearted));
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
 
-  const [titleOverride, setTitleOverride] = useState("");
-  const [notesType, setNotesType] = useState("New");
+  const [titleOverride, setTitleOverride] = useState(initialItem?.title || "");
+  const [notesType, setNotesType] = useState(initialItem ? "None" : "New");
   const [noteTitle, setNoteTitle] = useState("");
   const [noteBody, setNoteBody] = useState("");
   const [existingNotes, setExistingNotes] = useState([]);
   const [notesLoading, setNotesLoading] = useState(false);
   const [selectedNoteId, setSelectedNoteId] = useState(null);
 
-  const [imagePreview, setImagePreview] = useState(null);
+  const [imagePreview, setImagePreview] = useState(initialItem?.coverUrl || initialItem?.img || null);
   const fileInputRef = useRef(null);
 
   const isManualCategory = category === "Other";
   const isExternalCategory = !isManualCategory;
+  const isEditing = Boolean(initialItem?.id);
+  const allowNotes = !isEditing;
 
   useEffect(() => {
     setSearchTerm("");
     setResults([]);
     setSelectedItem(null);
-    setTitleOverride("");
-  }, [category]);
+    if (!isEditing) {
+      setTitleOverride("");
+    }
+  }, [category, isEditing]);
 
   useEffect(() => {
-    if (notesType !== "From Existing") {
+    if (initialItem) {
+      setCategory(normalizeCategoryFromType(initialItem.type || initialItem.mediaType));
+      setTitleOverride(initialItem.title || "");
+      setImagePreview(initialItem.coverUrl || initialItem.img || null);
+      setHearted(Boolean(initialItem.hearted));
+      setNotesType("None");
+      setNoteTitle("");
+      setNoteBody("");
+      setSelectedItem(null);
+      setSearchTerm("");
+      setResults([]);
+    } else {
+      setCategory("Music");
+      setTitleOverride("");
+      setImagePreview(null);
+      setHearted(false);
+      setNotesType("New");
+      setNoteTitle("");
+      setNoteBody("");
+      setSelectedItem(null);
+      setSearchTerm("");
+      setResults([]);
+    }
+  }, [initialItem]);
+
+  useEffect(() => {
+    if (notesType !== "From Existing" || !allowNotes) {
       setSelectedNoteId(null);
     }
     if (notesType !== "New") {
       setNoteTitle("");
       setNoteBody("");
     }
-    if (notesType !== "From Existing") {
+    if (notesType !== "From Existing" || !allowNotes) {
       return;
     }
     let isMounted = true;
@@ -169,7 +229,7 @@ function AddModal({ onClose, onSave, userId = DEFAULT_USER_ID }) {
     return () => {
       isMounted = false;
     };
-  }, [notesType, userId]);
+  }, [notesType, userId, allowNotes]);
 
   // HANDLERS
 
@@ -213,7 +273,7 @@ function AddModal({ onClose, onSave, userId = DEFAULT_USER_ID }) {
   };
 
   const handleSave = async () => {
-    const mediaType = category.toLowerCase();
+    const normalizedType = normalizeTypeFromCategory(category);
     const fallbackTitle = isManualCategory ? "Untitled item" : "";
     const title = titleOverride.trim() || selectedItem?.title || fallbackTitle;
 
@@ -222,14 +282,55 @@ function AddModal({ onClose, onSave, userId = DEFAULT_USER_ID }) {
       return;
     }
 
+    const coverValue = selectedItem?.thumbnail || imagePreview || null;
+    const creatorValue = selectedItem?.creator || initialItem?.creator || "";
+    const yearValue =
+      selectedItem?.year ??
+      selectedItem?.releaseYear ??
+      initialItem?.year ??
+      null;
+
+    if (isEditing && initialItem?.id) {
+      try {
+        const res = await fetch(
+          `http://127.0.0.1:5000/api/stacks/${initialItem.id}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              mediaType: normalizedType,
+              title,
+              creator: creatorValue,
+              year: yearValue,
+              coverUrl: coverValue,
+            }),
+          }
+        );
+
+        if (!res.ok) {
+          const text = await res.text();
+          console.error("Failed to update stack:", text);
+          alert("Unable to update this item right now.");
+          return;
+        }
+
+        onSave?.();
+        onClose();
+      } catch (err) {
+        console.error("Failed to update stack:", err);
+        alert("Unable to update this item right now.");
+      }
+      return;
+    }
+
     const payload = {
       userId,
-      mediaType,
+      mediaType: normalizedType,
       externalId: selectedItem?.id || null,
       title,
-      creator: selectedItem?.creator || "",
-      year: selectedItem?.year ?? null,
-      coverUrl: selectedItem?.thumbnail || imagePreview || null,
+      creator: creatorValue,
+      year: yearValue,
+      coverUrl: coverValue,
     };
 
 
@@ -281,9 +382,9 @@ function AddModal({ onClose, onSave, userId = DEFAULT_USER_ID }) {
       const newItem = {
         id: stackId,
         title,
-        img: selectedItem?.thumbnail || imagePreview || null,
-        coverUrl: selectedItem?.thumbnail || imagePreview || null,
-        type: mediaType,
+        img: coverValue,
+        coverUrl: coverValue,
+        type: normalizedType,
         hearted,
         year: payload.year,
       };
@@ -310,7 +411,14 @@ function AddModal({ onClose, onSave, userId = DEFAULT_USER_ID }) {
         {/* header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-800">Add to stack</h2>
+            <h2 className="text-lg font-semibold text-gray-800">
+              {isEditing ? "Edit stack item" : "Add to stack"}
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">
+              {isManualCategory
+                ? "Upload an image or describe anything that doesn't fit the other categories."
+                : `Search and select a ${category.toLowerCase()} from an external source, then add your own note.`}
+            </p>
           </div>
 
           <Button
@@ -338,26 +446,12 @@ function AddModal({ onClose, onSave, userId = DEFAULT_USER_ID }) {
               </button>
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent className="w-40 bg-white">
-              <DropdownMenuItem onClick={() => setCategory("Music")}>
-                Music
-              </DropdownMenuItem>
-
-              <DropdownMenuItem onClick={() => setCategory("Movies")}>
-                Movies
-              </DropdownMenuItem>
-
-              <DropdownMenuItem onClick={() => setCategory("TV")}>
-                TV
-              </DropdownMenuItem>
-
-              <DropdownMenuItem onClick={() => setCategory("Books")}>
-                Books
-              </DropdownMenuItem>
-
-              <DropdownMenuItem onClick={() => setCategory("Other")}>
-                Other
-              </DropdownMenuItem>
+            <DropdownMenuContent className="w-40 bg-[#FBF5ED]">
+              {CATEGORY_OPTIONS.map((option) => (
+                <DropdownMenuItem key={option} onClick={() => setCategory(option)}>
+                  {option}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -596,6 +690,23 @@ function AddModal({ onClose, onSave, userId = DEFAULT_USER_ID }) {
           </button>
 
           <div className="flex gap-2">
+            {isEditing && onDelete && (
+              <Button
+                type="button"
+                variant="destructive"
+                className="rounded-lg"
+                onClick={async () => {
+                  if (!initialItem?.id) return;
+                  const confirmDelete = window.confirm(
+                    "Delete this item? This cannot be undone."
+                  );
+                  if (!confirmDelete) return;
+                  await onDelete(initialItem.id);
+                }}
+              >
+                Delete
+              </Button>
+            )}
             <Button
               variant="outline"
               className="rounded-lg"
@@ -609,7 +720,7 @@ function AddModal({ onClose, onSave, userId = DEFAULT_USER_ID }) {
               onClick={handleSave}
               className="rounded-lg bg-[#CAC444] hover:bg-[#b5b03f] text-black px-4"
             >
-              Save to stack
+              {isEditing ? "Save changes" : "Save to stack"}
             </Button>
           </div>
         </div>

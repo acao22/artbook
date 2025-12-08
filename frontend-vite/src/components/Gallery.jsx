@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import GalleryItem from "./GalleryItem";
-import { Heart } from "lucide-react";
+import { Heart, Pencil } from "lucide-react";
 
 const FALLBACK_IMG =
   "https://via.placeholder.com/400x400/DDD7C8/8B7E6A?text=No+Image";
@@ -11,6 +11,7 @@ export default function Gallery({
   allowHeartToggle = true,
   onCollectionClick,
   onHeartToggle,
+  onEditItem,
 }) {
   const [fetchedItems, setFetchedItems] = useState([]);
 
@@ -129,6 +130,7 @@ export default function Gallery({
               item={item}
               allowHeart={allowHeartToggle}
               onHeartToggle={onHeartToggle}
+              onEdit={() => onEditItem?.(item)}
             />
           ))}
         </div>
@@ -151,6 +153,7 @@ export default function Gallery({
             refresh={shouldFetch ? refreshGallery : undefined}
             allowHeart={allowHeartToggle}
             onHeartToggle={onHeartToggle}
+            onEdit={onEditItem ? () => onEditItem(item) : undefined}
           />
         </div>
       ))}
@@ -159,7 +162,7 @@ export default function Gallery({
   );
 }
 
-function StubGridItem({ item, allowHeart, onHeartToggle }) {
+function StubGridItem({ item, allowHeart, onHeartToggle, onEdit }) {
   const [hearted, setHearted] = useState(Boolean(item.hearted));
   const hasImage = Boolean(item.coverUrl || item.img);
 
@@ -182,7 +185,7 @@ function StubGridItem({ item, allowHeart, onHeartToggle }) {
   };
 
   return (
-    <div className="relative flex gap-4 p-4 rounded-3xl border border-[#eadfcc] bg-[#AEC7E0]/40 shadow-sm">
+    <div className="group relative flex gap-4 p-4 rounded-3xl border border-[#eadfcc] bg-[#AEC7E0]/40 shadow-sm">
       {hasImage && (
         <div className="w-28 h-full rounded-2xl overflow-hidden flex-shrink-0 bg-[#f4efe4] flex items-center justify-center">
           <img
@@ -219,6 +222,19 @@ function StubGridItem({ item, allowHeart, onHeartToggle }) {
                 : "text-[#1f2a37]/30 transition-colors"
             }
           />
+        </button>
+      )}
+
+      {onEdit && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+          onEdit();
+          }}
+          className="absolute bottom-3 right-3 rounded-full bg-white/80 p-2 text-gray-700 shadow-sm opacity-0 group-hover:opacity-100 transition"
+        >
+          <Pencil size={16} />
         </button>
       )}
     </div>

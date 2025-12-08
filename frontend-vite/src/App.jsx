@@ -110,6 +110,7 @@ function ProfileShell({ defaultUserId = USER_ID }) {
   const [stubHeartedOnly, setStubHeartedOnly] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [currentMode, setCurrentMode] = useState("stack");
+  const [editingItem, setEditingItem] = useState(null);
   const [profileUser, setProfileUser] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState("");
@@ -140,12 +141,32 @@ function ProfileShell({ defaultUserId = USER_ID }) {
     [resolvedUserId]
   );
 
-  const openModal = useCallback((mode) => {
+  const openModal = useCallback((mode, item = null) => {
     setCurrentMode(mode);
+    setEditingItem(item);
     setShowModal(true);
   }, []);
 
-  const closeModal = useCallback(() => setShowModal(false), []);
+  const closeModal = useCallback(() => {
+    setShowModal(false);
+    setEditingItem(null);
+  }, []);
+  const openStackModal = useCallback(() => openModal("stack"), [openModal]);
+  const openStubModal = useCallback(() => openModal("stubs"), [openModal]);
+  const handleStackEditClick = useCallback(
+    (item) => {
+      if (!item) return;
+      openModal("stack", item);
+    },
+    [openModal]
+  );
+  const handleStubEditClick = useCallback(
+    (item) => {
+      if (!item) return;
+      openModal("stubs", item);
+    },
+    [openModal]
+  );
 
   const loadProfileUser = useCallback(async () => {
     if (!resolvedUserId) return;
@@ -325,6 +346,54 @@ function ProfileShell({ defaultUserId = USER_ID }) {
       loadStubs();
     },
     [loadStubs]
+  );
+
+  const handleStackDelete = useCallback(
+    async (stackId) => {
+      if (!stackId) return;
+      try {
+        const res = await fetch(
+          `http://127.0.0.1:5000/api/stacks/${stackId}`,
+          { method: "DELETE" }
+        );
+        if (!res.ok) {
+          const text = await res.text();
+          console.error("Failed to delete stack:", text);
+          alert("Unable to delete this stack right now.");
+          return;
+        }
+        await loadStacks();
+        closeModal();
+      } catch (err) {
+        console.error("Failed to delete stack:", err);
+        alert("Unable to delete this stack right now.");
+      }
+    },
+    [loadStacks, closeModal]
+  );
+
+  const handleStubDelete = useCallback(
+    async (stubId) => {
+      if (!stubId) return;
+      try {
+        const res = await fetch(
+          `http://127.0.0.1:5000/api/stubs/${stubId}`,
+          { method: "DELETE" }
+        );
+        if (!res.ok) {
+          const text = await res.text();
+          console.error("Failed to delete stub:", text);
+          alert("Unable to delete this stub right now.");
+          return;
+        }
+        await loadStubs();
+        closeModal();
+      } catch (err) {
+        console.error("Failed to delete stub:", err);
+        alert("Unable to delete this stub right now.");
+      }
+    },
+    [loadStubs, closeModal]
   );
 
   const openCollectionModal = useCallback((collection = null) => {
@@ -528,11 +597,13 @@ function ProfileShell({ defaultUserId = USER_ID }) {
       filteredStubItems,
       handleStackHeartUpdate,
       handleStubHeartUpdate,
-      openStackModal: isOwnProfile ? () => openModal("stack") : null,
-      openStubModal: isOwnProfile ? () => openModal("stubs") : null,
+      openStackModal: isOwnProfile ? openStackModal : null,
+      openStubModal: isOwnProfile ? openStubModal : null,
       openCollectionModal: isOwnProfile
         ? (collection) => openCollectionModal(collection)
         : null,
+      onStackEdit: isOwnProfile ? handleStackEditClick : null,
+      onStubEdit: isOwnProfile ? handleStubEditClick : null,
       sortedCollections,
       collections,
       handleCollectionItemRemove: isOwnProfile
@@ -555,7 +626,10 @@ function ProfileShell({ defaultUserId = USER_ID }) {
       handleStackHeartUpdate,
       handleStubHeartUpdate,
       isOwnProfile,
-      openModal,
+      openStackModal,
+      openStubModal,
+      handleStackEditClick,
+      handleStubEditClick,
       openCollectionModal,
       sortedCollections,
       collections,
@@ -592,12 +666,24 @@ function ProfileShell({ defaultUserId = USER_ID }) {
             onClose={closeModal}
             onSave={handleStubSaved}
             userId={resolvedUserId}
+            initialStub={currentMode === "stubs" ? editingItem : null}
+            onDelete={
+              currentMode === "stubs" && editingItem
+                ? handleStubDelete
+                : undefined
+            }
           />
         ) : (
           <AddModal
             onClose={closeModal}
             onSave={handleStackSaved}
             userId={resolvedUserId}
+            initialItem={currentMode === "stack" ? editingItem : null}
+            onDelete={
+              currentMode === "stack" && editingItem
+                ? handleStackDelete
+                : undefined
+            }
           />
         )
       )}
@@ -637,6 +723,7 @@ function ProfileStackRoute() {
         items={ctx.filteredStackItems}
         onHeartToggle={ctx.isOwnProfile ? ctx.handleStackHeartUpdate : undefined}
         allowHeartToggle={ctx.isOwnProfile}
+        onEditItem={ctx.isOwnProfile ? ctx.onStackEdit : undefined}
       />
     </>
   );
@@ -661,6 +748,7 @@ function ProfileStubsRoute() {
         variant="stubs"
         onHeartToggle={ctx.isOwnProfile ? ctx.handleStubHeartUpdate : undefined}
         allowHeartToggle={ctx.isOwnProfile}
+        onEditItem={ctx.isOwnProfile ? ctx.onStubEdit : undefined}
       />
     </>
   );

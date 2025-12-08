@@ -42,6 +42,7 @@ export default function NoteDetail({
   const [note, setNote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const loadNote = useCallback(async () => {
     if (!noteId) return;
@@ -143,6 +144,29 @@ export default function NoteDetail({
           onSave={() => {
             setShowModal(false);
             loadNote();
+          }}
+          onDelete={async (noteId) => {
+            if (!noteId || deleting) return;
+            setDeleting(true);
+            try {
+              const res = await fetch(
+                `http://127.0.0.1:5000/api/notes/${noteId}`,
+                { method: "DELETE" }
+              );
+              if (!res.ok) {
+                const text = await res.text();
+                console.error("Failed to delete note:", text);
+                alert("Unable to delete this note right now.");
+                return;
+              }
+              setShowModal(false);
+              navigate(buildProfilePath("notes"));
+            } catch (err) {
+              console.error("Failed to delete note:", err);
+              alert("Unable to delete this note right now.");
+            } finally {
+              setDeleting(false);
+            }
           }}
           userId={userId}
         />

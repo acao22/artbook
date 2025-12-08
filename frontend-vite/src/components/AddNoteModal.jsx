@@ -10,6 +10,7 @@ export default function AddNoteModal({
   onSave,
   initialNote = null,
   userId = DEFAULT_USER_ID,
+  onDelete,
 }) {
   const [headline, setHeadline] = useState(initialNote?.title || "");
   const [body, setBody] = useState(initialNote?.body || "");
@@ -418,6 +419,21 @@ export default function AddNoteModal({
         </div>
 
         <div className="flex justify-end gap-3 pt-2">
+          {isEditing && onDelete && (
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!initialNote?.id) return;
+                const confirmDelete = window.confirm(
+                  "Delete this note? This cannot be undone."
+                );
+                if (!confirmDelete) return;
+                await onDelete(initialNote.id);
+              }}
+            >
+              Delete
+            </Button>
+          )}
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>

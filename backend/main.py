@@ -250,6 +250,24 @@ def update_note(note_id):
 
     return jsonify({"message": "Note updated", "note": {**latest, "id": note_id}})
 
+
+@app.route("/api/notes/<note_id>", methods=["DELETE"])
+def delete_note_entry(note_id):
+    note_ref = database_ref.child("notes").child(note_id)
+    existing = note_ref.get()
+
+    if not existing:
+        return jsonify({"error": "Note not found"}), 404
+
+    note_ref.delete()
+
+    user_id = existing.get("userId")
+    if user_id:
+        database_ref.child(f"users/{user_id}/notes").child(note_id).delete()
+
+    return jsonify({"message": "Note deleted"})
+
+
 # ----------------------------
 # ADD STACK ITEM
 # ----------------------------
@@ -308,6 +326,43 @@ def update_heart(stack_id):
     stack_ref.update({"hearted": new_val})
 
     return jsonify({"message": "Heart updated", "hearted": new_val})
+
+
+@app.route("/api/stacks/<stack_id>", methods=["PATCH"])
+def edit_stack(stack_id):
+    data = request.get_json() or {}
+    allowed_keys = {"mediaType", "title", "creator", "year", "coverUrl", "hearted"}
+    updates = {key: data.get(key) for key in allowed_keys if key in data}
+
+    if not updates:
+        return jsonify({"error": "No valid fields provided"}), 400
+
+    stack_ref = database_ref.child("stacks").child(stack_id)
+    existing = stack_ref.get()
+    if not existing:
+        return jsonify({"error": "Stack not found"}), 404
+
+    stack_ref.update(updates)
+    latest = stack_ref.get() or {}
+
+    return jsonify({"message": "Stack updated", "stack": {**latest, "id": stack_id}})
+
+
+@app.route("/api/stacks/<stack_id>", methods=["DELETE"])
+def delete_stack(stack_id):
+    stack_ref = database_ref.child("stacks").child(stack_id)
+    existing = stack_ref.get()
+
+    if not existing:
+        return jsonify({"error": "Stack not found"}), 404
+
+    stack_ref.delete()
+
+    user_id = existing.get("userId")
+    if user_id:
+        database_ref.child(f"users/{user_id}/stacks").child(stack_id).delete()
+
+    return jsonify({"message": "Stack deleted"})
 
 
 # get for stacks
@@ -394,6 +449,42 @@ def update_stub_heart(stub_id):
 
     stub_ref.update({"hearted": bool(new_val)})
     return jsonify({"message": "Stub heart updated", "hearted": bool(new_val)})
+
+
+@app.route("/api/stubs/<stub_id>", methods=["PATCH"])
+def edit_stub(stub_id):
+    data = request.get_json() or {}
+    allowed_keys = {"category", "title", "date", "coverUrl", "hearted"}
+    updates = {key: data.get(key) for key in allowed_keys if key in data}
+
+    if not updates:
+        return jsonify({"error": "No valid fields provided"}), 400
+
+    stub_ref = database_ref.child("stubs").child(stub_id)
+    existing = stub_ref.get()
+    if not existing:
+        return jsonify({"error": "Stub not found"}), 404
+
+    stub_ref.update(updates)
+    latest = stub_ref.get() or {}
+
+    return jsonify({"message": "Stub updated", "stub": {**latest, "id": stub_id}})
+
+
+@app.route("/api/stubs/<stub_id>", methods=["DELETE"])
+def delete_stub(stub_id):
+    stub_ref = database_ref.child("stubs").child(stub_id)
+    existing = stub_ref.get()
+
+    if not existing:
+        return jsonify({"error": "Stub not found"}), 404
+
+    stub_ref.delete()
+    user_id = existing.get("userId")
+    if user_id:
+        database_ref.child(f"users/{user_id}/stubs").child(stub_id).delete()
+
+    return jsonify({"message": "Stub deleted"})
 
 
 def sanitize_collection_items(items):

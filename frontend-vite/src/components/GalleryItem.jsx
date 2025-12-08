@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Heart } from "lucide-react";
+import { Heart, Pencil } from "lucide-react";
 
 const FALLBACK_IMG =
   "https://via.placeholder.com/400x400/DDD7C8/8B7E6A?text=No+Image";
@@ -9,6 +9,7 @@ export default function GalleryItem({
   refresh,
   allowHeart = true,
   onHeartToggle,
+  onEdit,
 }) {
   const [hover, setHover] = useState(false);
   const [hearted, setHearted] = useState(Boolean(item.hearted));
@@ -143,6 +144,18 @@ export default function GalleryItem({
               ${hover ? "scale-110" : "scale-100"}
             `}
           />
+        </button>
+      )}
+
+      {onEdit && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+          className="absolute bottom-2 right-2 rounded-full bg-white/80 p-2 text-gray-700 shadow-sm opacity-0 group-hover:opacity-100 transition"
+        >
+          <Pencil size={16} />
         </button>
       )}
     </div>
