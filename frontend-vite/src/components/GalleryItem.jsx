@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Heart, Pencil } from "lucide-react";
+import StackStubDetailModal from "./StackStubDetailModal";
 
 const FALLBACK_IMG =
   "https://via.placeholder.com/400x400/DDD7C8/8B7E6A?text=No+Image";
@@ -13,6 +14,7 @@ export default function GalleryItem({
 }) {
   const [hover, setHover] = useState(false);
   const [hearted, setHearted] = useState(Boolean(item.hearted));
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   const isStubCard = item.displayMode === "stub";
   const hasImage = Boolean(item.coverUrl || item.img);
@@ -42,14 +44,24 @@ export default function GalleryItem({
     }
   };
 
+  const handleItemClick = (e) => {
+    // Don't open modal if clicking on heart or edit button
+    if (e.target.closest('button')) {
+      return;
+    }
+    setShowDetailModal(true);
+  };
+
   return (
-    <div
-      className={`relative w-full overflow-hidden rounded-xl shadow-md cursor-pointer group ${
-        useTextCard ? "bg-[#AEC7E0]/40" : ""
-      }`}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
+    <>
+      <div
+        className={`relative w-full overflow-hidden rounded-xl shadow-md cursor-pointer group ${
+          useTextCard ? "bg-[#AEC7E0]/40" : ""
+        }`}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        onClick={handleItemClick}
+      >
       {useTextCard ? (
         <div
           className={`flex flex-col justify-between p-4 text-[#1f2a37] ${
@@ -159,5 +171,14 @@ export default function GalleryItem({
         </button>
       )}
     </div>
+
+    {showDetailModal && (
+      <StackStubDetailModal
+        item={item}
+        onClose={() => setShowDetailModal(false)}
+        isStub={isStubCard}
+      />
+    )}
+    </>
   );
 }

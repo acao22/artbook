@@ -2,16 +2,18 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import AddNoteModal from "../components/AddNoteModal";
 import FilterBar from "../components/FilterBar";
+import { useAuth } from "@/contexts/AuthContext";
 
-const DEFAULT_USER_ID = "user_001";
 const DEFAULT_PATH_BUILDER = (subPath = "") =>
   `/profile/${subPath}`.replace(/\/+$/, "") || "/profile";
 
 export default function NotesPage({
-  userId = DEFAULT_USER_ID,
+  userId = null,
   allowCreate = true,
   buildProfilePath = DEFAULT_PATH_BUILDER,
 }) {
+  const { currentUser } = useAuth();
+  const resolvedUserId = userId || currentUser?.uid;
   const [notes, setNotes] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [sortBy, setSortBy] = useState("default");
@@ -19,9 +21,12 @@ export default function NotesPage({
 
   const refreshNotes = useCallback(async () => {
     try {
-      const res = await fetch(
-        `http://127.0.0.1:5000/api/notes?userId=${userId}`
-      );
+      // we do if theres userid is provided, show that user's notes. 
+      // ow show all public notes
+      const url = resolvedUserId
+        ? `http://127.0.0.1:5000/api/notes?userId=${resolvedUserId}`
+        : `http://127.0.0.1:5000/api/notes`;
+      const res = await fetch(url);
       const data = await res.json();
       const formatted =
         (data.results || []).map((note) => {
@@ -52,7 +57,7 @@ export default function NotesPage({
     } catch (err) {
       console.error("Failed to load notes:", err);
     }
-  }, [userId]);
+  }, [resolvedUserId]);
 
   useEffect(() => {
     refreshNotes();
@@ -155,12 +160,12 @@ export default function NotesPage({
         ))}
       </div>
 
-      {showModal && allowCreate && (
+      {showModal && allowCreate && currentUser && (
         <AddNoteModal
           initialNote={null}
           onClose={handleCloseModal}
           onSave={handleModalSave}
-          userId={userId}
+          userId={currentUser.uid}
         />
       )}
     </section>

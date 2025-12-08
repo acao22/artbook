@@ -79,39 +79,46 @@ const RECENT_COLLECTIONS = [
   },
 ];
 
-const Section = ({ label, title, description, items }) => (
-  <section className="space-y-4">
-    <div className="flex flex-col gap-1">
-      <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
-      <h2 className="text-2xl font-semibold text-[#1F2A37]">{title}</h2>
-      {description && <p className="text-sm text-gray-600">{description}</p>}
-    </div>
-    <div className="relative">
-      <div className="flex gap-5 overflow-x-auto pb-3 snap-x snap-mandatory">
-        {items.map((item) => (
-          <article
-            key={item.id}
-            className="flex-shrink-0 snap-start space-y-3 max-w-[230px]"
-          >
-            <div className="h-56 rounded-3xl overflow-hidden border border-[#efe7db] bg-[#f5efe6] shadow-md">
-              <img
-                src={item.cover}
-                alt={item.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="space-y-1">
-              <p className="text-base font-semibold text-[#1F2A37] line-clamp-2">
-                {item.title}
-              </p>
-              <p className="text-sm text-gray-600">{item.creator}</p>
-            </div>
-          </article>
-        ))}
+const Section = ({ label, title, description, items }) => {
+  const handleCollectionClick = (item) => {
+    alert(`This uses collection! Clicking on "${item.title}" by ${item.creator}`);
+  };
+
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-col gap-1">
+        <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
+        <h2 className="text-2xl font-semibold text-[#1F2A37]">{title}</h2>
+        {description && <p className="text-sm text-gray-600">{description}</p>}
       </div>
-    </div>
-  </section>
-);
+      <div className="relative">
+        <div className="flex gap-5 overflow-x-auto pb-3 snap-x snap-mandatory">
+          {items.map((item) => (
+            <article
+              key={item.id}
+              onClick={() => handleCollectionClick(item)}
+              className="flex-shrink-0 snap-start space-y-3 max-w-[230px] cursor-pointer transition hover:-translate-y-1"
+            >
+              <div className="h-56 rounded-3xl overflow-hidden border border-[#efe7db] bg-[#f5efe6] shadow-md">
+                <img
+                  src={item.cover}
+                  alt={item.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-base font-semibold text-[#1F2A37] line-clamp-2">
+                  {item.title}
+                </p>
+                <p className="text-sm text-gray-600">{item.creator}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
 
 export default function CollectionsPage() {
   return (

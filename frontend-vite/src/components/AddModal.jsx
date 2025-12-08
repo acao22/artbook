@@ -123,10 +123,15 @@ async function searchExternal(category, query) {
 function AddModal({
   onClose,
   onSave,
-  userId = DEFAULT_USER_ID,
+  userId,
   initialItem = null,
   onDelete,
 }) {
+  // we require userid
+  if (!userId) {
+    console.error("AddModal: userId is required");
+    return null;
+  }
   const [category, setCategory] = useState(
     () => normalizeCategoryFromType(initialItem?.type || initialItem?.mediaType) || "Music"
   );
@@ -159,8 +164,12 @@ function AddModal({
     setSelectedItem(null);
     if (!isEditing) {
       setTitleOverride("");
+      // reset note title when category changes
+      if (notesType === "New") {
+        setNoteTitle("");
+      }
     }
-  }, [category, isEditing]);
+  }, [category, isEditing, notesType]);
 
   useEffect(() => {
     if (initialItem) {
@@ -187,6 +196,13 @@ function AddModal({
       setResults([]);
     }
   }, [initialItem]);
+
+  // update note title when override changes
+  useEffect(() => {
+    if (!initialItem && notesType === "New" && titleOverride && !noteTitle.trim()) {
+      setNoteTitle(`Notes on ${titleOverride}`);
+    }
+  }, [titleOverride, notesType, initialItem]);
 
   useEffect(() => {
     if (notesType !== "From Existing" || !allowNotes) {
@@ -270,6 +286,10 @@ function AddModal({
       setImagePreview(item.thumbnail);
     }
     setResults([]);
+    // prefill note title
+    if (notesType === "New" && item.title) {
+      setNoteTitle(`Notes on ${item.title}`);
+    }
   };
 
   const handleSave = async () => {

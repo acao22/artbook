@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import GalleryItem from "./GalleryItem";
 import { Heart, Pencil } from "lucide-react";
+import StackStubDetailModal from "./StackStubDetailModal";
 
 const FALLBACK_IMG =
   "https://via.placeholder.com/400x400/DDD7C8/8B7E6A?text=No+Image";
@@ -164,6 +165,7 @@ export default function Gallery({
 
 function StubGridItem({ item, allowHeart, onHeartToggle, onEdit }) {
   const [hearted, setHearted] = useState(Boolean(item.hearted));
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const hasImage = Boolean(item.coverUrl || item.img);
 
   const toggleHeart = async () => {
@@ -184,8 +186,20 @@ function StubGridItem({ item, allowHeart, onHeartToggle, onEdit }) {
     }
   };
 
+  const handleItemClick = (e) => {
+    // heart button case
+    if (e.target.closest('button')) {
+      return;
+    }
+    setShowDetailModal(true);
+  };
+
   return (
-    <div className="group relative flex gap-4 p-4 rounded-3xl border border-[#eadfcc] bg-[#AEC7E0]/40 shadow-sm">
+    <>
+      <div
+        className="group relative flex gap-4 p-4 rounded-3xl border border-[#eadfcc] bg-[#AEC7E0]/40 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+        onClick={handleItemClick}
+      >
       {hasImage && (
         <div className="w-28 h-full rounded-2xl overflow-hidden flex-shrink-0 bg-[#f4efe4] flex items-center justify-center">
           <img
@@ -238,5 +252,14 @@ function StubGridItem({ item, allowHeart, onHeartToggle, onEdit }) {
         </button>
       )}
     </div>
+
+    {showDetailModal && (
+      <StackStubDetailModal
+        item={item}
+        onClose={() => setShowDetailModal(false)}
+        isStub={true}
+      />
+    )}
+    </>
   );
 }

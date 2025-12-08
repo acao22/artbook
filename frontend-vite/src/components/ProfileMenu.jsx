@@ -5,18 +5,30 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import pfp from "@/assets/pfp.png";
 
 export function ProfileMenu() {
+  const { currentUser, userProfile, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/");
+  };
+
+  const avatarSrc = userProfile?.avatar || pfp;
+  const initials = userProfile?.username?.[0]?.toUpperCase() || currentUser?.email?.[0]?.toUpperCase() || "U";
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Avatar
           className="cursor-pointer border border-border hover:ring-2 hover:ring-ring transition"
         >
-          <AvatarImage src={pfp} alt="profile" />
-          <AvatarFallback>M</AvatarFallback>
+          <AvatarImage src={avatarSrc} alt="profile" />
+          <AvatarFallback>{initials}</AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
 
@@ -33,11 +45,17 @@ export function ProfileMenu() {
           <NavLink to="/profile/stack">Profile</NavLink>
         </DropdownMenuItem>
 
-        <DropdownMenuItem asChild>
-          <NavLink to="/profile/settings">Settings</NavLink>
+        <DropdownMenuItem
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("/profile/stack");
+            window.dispatchEvent(new CustomEvent("openEditProfile"));
+          }}
+        >
+          Settings
         </DropdownMenuItem>
 
-        <DropdownMenuItem className="text-destructive">
+        <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
           Logout
         </DropdownMenuItem>
       </DropdownMenuContent>

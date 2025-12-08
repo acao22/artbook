@@ -10,6 +10,7 @@ import {
   useParams,
   useOutletContext,
 } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 import Navbar from "./components/Navbar";
 import ProfileHeader from "./components/ProfileHeader";
@@ -27,39 +28,41 @@ import CollectionDetail from "./pages/CollectionDetail";
 import SearchResults from "./pages/SearchResults";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const STACK_FILTERS = ["music", "movies", "tv", "books", "other"];
 const STUB_FILTERS = ["concerts", "museums", "theatre", "other"];
 const ALL_FILTERS = [...new Set([...STACK_FILTERS, ...STUB_FILTERS])];
-const USER_ID = "user_001";
 
 export default function App() {
   return (
     <Router>
       <TooltipProvider>
-        <div className="min-h-screen bg-[#FBF5ED]">
-          <Navbar />
+        <AuthProvider>
+          <div className="min-h-screen bg-[#FBF5ED]">
+            <Navbar />
 
-          <Routes>
-            <Route path="/explore" element={<ExplorePage />} />
-            <Route path="/collections" element={<CollectionsPage />} />
-            <Route path="/notes" element={<CollectionsPage />} />
-            <Route path="/search" element={<SearchResults />} />
+            <Routes>
+              <Route path="/explore" element={<ExplorePage />} />
+              <Route path="/collections" element={<CollectionsPage />} />
+              <Route path="/notes" element={<NotesPage />} />
+              <Route path="/search" element={<SearchResults />} />
 
-            <Route
-              path="/profile/*"
-              element={<ProfileShell defaultUserId={USER_ID} />}
-            >
-              {renderProfileRoutes()}
-            </Route>
+              <Route path="/profile/*" element={<ProfileShell />}>
+                {renderProfileRoutes()}
+              </Route>
 
-            <Route path="/profiles/:profileId/*" element={<ProfileShell />}>
-              {renderProfileRoutes()}
-            </Route>
+              <Route path="/profiles/:profileId/*" element={<ProfileShell />}>
+                {renderProfileRoutes()}
+              </Route>
 
-            <Route path="*" element={<Navigate to="/profile/stack" replace />} />
-          </Routes>
-        </div>
+              <Route
+                path="*"
+                element={<Navigate to="/explore" replace />}
+              />
+            </Routes>
+          </div>
+        </AuthProvider>
       </TooltipProvider>
     </Router>
   );
@@ -82,12 +85,13 @@ function renderProfileRoutes() {
   );
 }
 
-function ProfileShell({ defaultUserId = USER_ID }) {
+function ProfileShell({ defaultUserId = null }) {
   const params = useParams();
   const location = useLocation();
+  const { currentUser, userProfile } = useAuth();
 
-  const resolvedUserId = params.profileId || defaultUserId || USER_ID;
-  const isOwnProfile = resolvedUserId === USER_ID;
+  const resolvedUserId = params.profileId || currentUser?.uid || defaultUserId;
+  const isOwnProfile = currentUser && resolvedUserId === currentUser.uid;
 
   const [stackItems, setStackItems] = useState([]);
   const [stubItems, setStubItems] = useState([]);
@@ -133,12 +137,16 @@ function ProfileShell({ defaultUserId = USER_ID }) {
     (subPath = "") => {
       const normalized = subPath.replace(/^\/+/, "");
       const suffix = normalized ? `/${normalized}` : "";
-      if (!resolvedUserId || resolvedUserId === USER_ID) {
+    
+      if (!params.profileId && currentUser && resolvedUserId === currentUser.uid) {
         return `/profile${suffix}`;
       }
-      return `/profiles/${resolvedUserId}${suffix}`;
+      if (resolvedUserId) {
+        return `/profiles/${resolvedUserId}${suffix}`;
+      }
+      return `/profile${suffix}`;
     },
-    [resolvedUserId]
+    [resolvedUserId, params.profileId, currentUser]
   );
 
   const openModal = useCallback((mode, item = null) => {
@@ -417,7 +425,7 @@ function ProfileShell({ defaultUserId = USER_ID }) {
           method,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId: resolvedUserId,
+            userId: currentUser?.uid || resolvedUserId,
             title: collectionPayload.title,
             subtitle: collectionPayload.subtitle,
             cover: collectionPayload.cover,
@@ -440,7 +448,7 @@ function ProfileShell({ defaultUserId = USER_ID }) {
         alert("Unable to save collection. Please try again.");
       }
     },
-    [closeCollectionModal, loadCollections, resolvedUserId]
+    [closeCollectionModal, loadCollections, resolvedUserId, currentUser]
   );
 
   const handleCollectionDelete = useCallback(
@@ -665,7 +673,7 @@ function ProfileShell({ defaultUserId = USER_ID }) {
           <AddModalStubs
             onClose={closeModal}
             onSave={handleStubSaved}
-            userId={resolvedUserId}
+            userId={currentUser?.uid || resolvedUserId}
             initialStub={currentMode === "stubs" ? editingItem : null}
             onDelete={
               currentMode === "stubs" && editingItem
@@ -677,7 +685,7 @@ function ProfileShell({ defaultUserId = USER_ID }) {
           <AddModal
             onClose={closeModal}
             onSave={handleStackSaved}
-            userId={resolvedUserId}
+            userId={currentUser?.uid || resolvedUserId}
             initialItem={currentMode === "stack" ? editingItem : null}
             onDelete={
               currentMode === "stack" && editingItem

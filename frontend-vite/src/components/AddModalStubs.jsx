@@ -19,10 +19,15 @@ const normalizeStubCategory = (value) => {
 export default function AddModalStubs({
   onClose,
   onSave,
-  userId = DEFAULT_USER_ID,
+  userId,
   initialStub = null,
   onDelete,
 }) {
+  // auth
+  if (!userId) {
+    console.error("AddModalStubs: userId is required");
+    return null;
+  }
   const [category, setCategory] = useState(
     normalizeStubCategory(initialStub?.category)
   );
@@ -62,6 +67,13 @@ export default function AddModalStubs({
       setNoteBody("");
     }
   }, [initialStub]);
+
+  useEffect(() => {
+    if (!initialStub && notesType === "New" && text && !noteTitle.trim()) {
+      const baseLabel = text.split("\n")[0]?.trim() || "this experience";
+      setNoteTitle(`Notes on ${baseLabel}`);
+    }
+  }, [text, notesType, initialStub]);
 
   useEffect(() => {
     if (notesType !== "From Existing" || !allowNotes) {

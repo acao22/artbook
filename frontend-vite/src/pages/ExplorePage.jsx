@@ -1,6 +1,7 @@
 // src/pages/ExplorePage.jsx
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const RECENTLY_ADDED = [
   {
@@ -75,17 +76,24 @@ const RECENT_NOTES = [
 ];
 
 export default function ExplorePage() {
+  const { currentUser, userProfile } = useAuth();
+  const userName = userProfile?.username || currentUser?.email?.split("@")[0] || "there";
+
   return (
     <section className="px-8 py-10 space-y-10">
       <header className="space-y-2">
         <h1 className="text-4xl font-semibold text-[#1F2A37] flex flex-wrap items-baseline gap-2">
           <span>Hi,</span>
-          <Link
-            to="/profile/stack"
-            className="text-[#1F2A37] underline decoration-[3px] decoration-[#CAC444] underline-offset-6 hover:text-[#CAC444] transition-colors"
-          >
-            Jin!
-          </Link>
+          {currentUser ? (
+            <Link
+              to="/profile/stack"
+              className="text-[#1F2A37] underline decoration-[3px] decoration-[#CAC444] underline-offset-6 hover:text-[#CAC444] transition-colors"
+            >
+              {userName}!
+            </Link>
+          ) : (
+            <span>{userName}!</span>
+          )}
         </h1>
       </header>
 
@@ -106,7 +114,8 @@ export default function ExplorePage() {
             {RECENTLY_ADDED.map((item) => (
               <article
                 key={item.id}
-                className="flex-shrink-0 snap-start space-y-3 max-w-[260px]"
+                onClick={() => alert(`This uses collection! Clicking on "${item.title}" by ${item.creator}`)}
+                className="flex-shrink-0 snap-start space-y-3 max-w-[260px] cursor-pointer transition hover:-translate-y-1"
               >
                 <div className="h-64 rounded-3xl overflow-hidden bg-[#f5efe6] shadow-lg flex items-center justify-center">
                   <img
@@ -141,7 +150,8 @@ export default function ExplorePage() {
           {RECENT_NOTES.map((note) => (
             <article
               key={note.id}
-              className="rounded-3xl bg-[#AEC7E0]/40 border border-[#e0edf7] shadow-sm p-6 text-[#1F2A37]"
+              onClick={() => alert(`This uses note! Clicking on "${note.title}" by ${note.author}`)}
+              className="rounded-3xl bg-[#AEC7E0]/40 border border-[#e0edf7] shadow-sm p-6 text-[#1F2A37] cursor-pointer transition hover:-translate-y-0.5 hover:shadow-md"
             >
               <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                 <div>

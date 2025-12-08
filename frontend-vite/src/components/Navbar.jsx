@@ -4,6 +4,9 @@ import { Search } from "lucide-react";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import LoginModal from "./LoginModal";
+import SignupModal from "./SignupModal";
 import {
   Select,
   SelectContent,
@@ -15,16 +18,19 @@ import {
 import { cn } from "@/lib/utils";
 
 const SEARCH_OPTIONS = [
-  { value: "profiles", label: "Profiles" },
+  { value: "profiles", label: "People" },
   { value: "collections", label: "Collections" },
   { value: "notes", label: "Notes" },
 ];
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const { currentUser, logout } = useAuth();
   const [searchType, setSearchType] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState("");
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -32,13 +38,10 @@ export default function Navbar() {
       setError("Choose what to search.");
       return;
     }
-    if (!searchTerm.trim()) {
-      setError("Enter a search term.");
-      return;
-    }
     setError("");
+    const query = searchTerm.trim();
     navigate(
-      `/search?type=${searchType}&q=${encodeURIComponent(searchTerm.trim())}`
+      `/search?type=${searchType}${query ? `&q=${encodeURIComponent(query)}` : ""}`
     );
   };
 
@@ -48,13 +51,19 @@ export default function Navbar() {
         
         {/* LEFT SIDE */}
         <div className="flex items-center gap-8">
-          <h1 className="font-semibold text-xl tracking-tight">Artsbook</h1>
+          <NavLink 
+            to={currentUser ? "/profile/stack" : "/explore"} 
+            className="font-semibold text-xl tracking-tight hover:opacity-80 transition cursor-pointer"
+          >
+            Artsbook
+          </NavLink>
 
           {/* nav links */}
           <div className="flex gap-2">
             <NavItem to="/explore" label="Explore" />
             <NavItem to="/collections" label="Collections" />
             <NavItem to="/notes" label="Notes" />
+            <NavItem to="/search?type=profiles" label="People" />
           </div>
         </div>
 
@@ -90,7 +99,9 @@ export default function Navbar() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder={
-                    searchType
+                    searchType === "profiles"
+                      ? "Search for a person"
+                      : searchType
                       ? `Search ${searchType}...`
                       : "Choose category first"
                   }
@@ -110,9 +121,41 @@ export default function Navbar() {
             {error && <p className="text-xs text-red-500">{error}</p>}
           </form>
 
-          <ProfileMenu />
+          {currentUser ? (
+            <ProfileMenu />
+          ) : (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowLogin(true)}
+                className="rounded-full"
+              >
+                Login
+              </Button>
+              <Button onClick={() => setShowSignup(true)} className="rounded-full">
+                Sign Up
+              </Button>
+            </div>
+          )}
         </div>
       </div>
+
+      <LoginModal
+        open={showLogin}
+        onClose={() => setShowLogin(false)}
+        onSwitchToSignup={() => {
+          setShowLogin(false);
+          setShowSignup(true);
+        }}
+      />
+      <SignupModal
+        open={showSignup}
+        onClose={() => setShowSignup(false)}
+        onSwitchToLogin={() => {
+          setShowSignup(false);
+          setShowLogin(true);
+        }}
+      />
     </nav>
   );
 }
